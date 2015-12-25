@@ -1,8 +1,24 @@
 #![feature(raw)]
 
+// TODO move to a module
+macro_rules! check {
+    ($e:expr) => {
+        if !$e {
+            return Err("");
+        }
+    };
+    ($e:expr, $msg: expr) => {
+        if !$e {
+            return Err($msg);
+        }
+    };
+}
+
+
 mod header;
 mod parsing;
 mod sections;
+mod program;
 mod symbol_table;
 mod dynamic;
 mod hash;
@@ -12,6 +28,7 @@ use std::io::Read;
 
 use header::Header;
 use sections::{SectionHeader, SectionIter, ShType};
+use program::{ProgramHeader, ProgramIter};
 use parsing::parse_str;
 use symbol_table::Entry;
 
@@ -33,11 +50,22 @@ impl<'a> ElfFile<'a> {
     }
 
     pub fn section_header(&self, index: u16) -> SectionHeader<'a> {
-        sections::parse_section_header(&self.input, self.header, index)
+        sections::parse_section_header(self.input, self.header, index)
     }
 
     pub fn section_iter<'b: 'a>(&'b self) -> SectionIter<'b, 'a> {
         SectionIter {
+            file: &self,
+            next_index: 0,
+        }
+    }
+
+    pub fn program_header(&self, index: u16) -> ProgramHeader<'a> {
+        program::parse_program_header(self.input, self.header, index)
+    }    
+
+    pub fn program_iter<'b: 'a>(&'b self) -> ProgramIter<'b, 'a> {
+        ProgramIter {
             file: &self,
             next_index: 0,
         }
@@ -62,10 +90,8 @@ impl<'a> ElfFile<'a> {
     }
 
     fn get_str_table(&self) -> &'a u8 {
-        // TODO cache this
-        let header = sections::parse_section_header(self.input,
-                                                    self.header,
-                                                    self.header.pt2.sh_str_index());
+        // TODO cache this?
+        let header = self.section_header(self.header.pt2.sh_str_index());
         &self.input[header.offset() as usize]
     }
 }
@@ -75,7 +101,7 @@ impl<'a> ElfFile<'a> {
 
 // TODO make this whole thing more library-like
 fn main() {
-    let buf = open_file("foo.o");
+    let buf = open_file("foo");
     let elf_file = ElfFile::new(&buf);
     println!("{}", elf_file.header);
     header::sanity_check(&elf_file).unwrap();
@@ -83,6 +109,7 @@ fn main() {
     let mut sect_iter = elf_file.section_iter();
     // Skip the first (dummy) section
     sect_iter.next();
+    println!("sections");
     for sect in sect_iter {
         println!("{}", sect.get_name(&elf_file).unwrap());
         println!("{:?}", sect.get_type());
@@ -90,22 +117,35 @@ fn main() {
         sections::sanity_check(sect, &elf_file).unwrap();
 
         if sect.get_type() == ShType::StrTab {
-            println!("{:?}", sect.get_data(&elf_file).to_strings().unwrap());
+            //println!("{:?}", sect.get_data(&elf_file).to_strings().unwrap());
         }
 
         if sect.get_type() == ShType::SymTab {
             if let sections::SectionData::SymbolTable64(data) = sect.get_data(&elf_file) {
                 for datum in data {
-                    println!("{}", datum.get_name(&elf_file));
+                    //println!("{}", datum.get_name(&elf_file));
                 }
             } else {
                 unreachable!();
             }
         }
     }
+    let mut ph_iter = elf_file.program_iter();
+    println!("\nprogram headers");
+    for sect in ph_iter {
+        println!("{:?}", sect.get_type());
+        program::sanity_check(sect, &elf_file).unwrap();
+    }
 
-    let sect = elf_file.find_section_by_name(".rodata.const2794").unwrap();
+    let sect = elf_file.program_header(5);
     println!("{}", sect);
+    let data = sect.get_data(&elf_file);
+    if let program::SegmentData::Note64(header, ptr) = data {
+        println!("{}: {:?}", header.name(ptr), header.desc(ptr));
+    }
+
+    //let sect = elf_file.find_section_by_name(".rodata.const2794").unwrap();
+    //println!("{}", sect);
 }
 
 // Helper function to open a file and read it into a buffer.

@@ -273,19 +273,6 @@ pub enum Machine {
 // TODO any more constants that need to go in here?
 
 pub fn sanity_check(file: &ElfFile) -> Result<(), &'static str> {
-    macro_rules! check {
-        ($e:expr) => {
-            if !$e {
-                return Err("");
-            }
-        };
-        ($e:expr, $msg: expr) => {
-            if !$e {
-                return Err($msg);
-            }
-        };
-    }
-
     check!(mem::size_of::<HeaderPt1>() == 16);
     check!(file.header.pt1.magic == MAGIC, "bad magic number");
     check!(mem::size_of::<HeaderPt1>() + file.header.pt2.size() == file.header.pt2.header_size() as usize,

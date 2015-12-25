@@ -66,7 +66,7 @@ pub trait Entry {
                         // Note that it is completely bogus to crop to u16 here.
                         let index = data[self_index] as u16;
                         assert!(index != sections::SHN_UNDEF);
-                        Some(sections::parse_section_header(elf_file.input, elf_file.header, index))
+                        Some(elf_file.section_header(index))
                     } else {
                         panic!("Expected SymTabShIndex");
                     }
@@ -75,7 +75,7 @@ pub trait Entry {
                 }
             }
             sections::SHN_UNDEF | sections::SHN_ABS | sections::SHN_COMMON => None,
-            i => Some(sections::parse_section_header(elf_file.input, elf_file.header, i)),
+            i => Some(elf_file.section_header(i)),
         }
     }
 

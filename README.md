@@ -1,4 +1,4 @@
-# Elf
+# xmas-elf
 
 A library for parsing and navigating ELF files.
 

@@ -45,9 +45,7 @@ impl<'b, 'a> Iterator for SectionIter<'b, 'a> {
             return None;
         }
 
-        let result = Some(parse_section_header(&self.file.input,
-                                               self.file.header,
-                                               self.next_index));
+        let result = Some(self.file.section_header(self.next_index));
         self.next_index += 1;
         result
     }
@@ -97,8 +95,6 @@ impl<'a> SectionHeader<'a> {
     }
 
     pub fn get_data(&self, elf_file: &ElfFile<'a>) -> SectionData<'a> {
-        type Dynamic32 = Dynamic<P32>;
-        type Dynamic64 = Dynamic<P64>;
         macro_rules! array_data {
             ($data32: ident, $data64: ident) => {{
                 let data = self.raw_data(elf_file);
@@ -148,13 +144,12 @@ impl<'a> SectionHeader<'a> {
                 match elf_file.header.pt1.class {
                     Class::ThirtyTwo => unimplemented!(),
                     Class::SixtyFour => {
-                        let header: &'a NoteHeader = parse_one(&data[0..3]);
-                        let index = &data[3];
+                        let header: &'a NoteHeader = parse_one(&data[0..12]);
+                        let index = &data[12];
                         SectionData::Note64(header, index)
                     }
                     Class::None => unreachable!(),
                 }
-
             }
             ShType::Hash => {
                 let data = self.raw_data(elf_file);
@@ -176,26 +171,26 @@ impl<'a> SectionHeader<'a> {
 
 impl<'a> fmt::Display for SectionHeader<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            SectionHeader::Sh32(sh) => sh.fmt(f),
-            SectionHeader::Sh64(sh) => sh.fmt(f),
+        macro_rules! sh_display {
+            ($sh: ident) => {{
+                try!(writeln!(f, "Section header:"));
+                try!(writeln!(f, "    name:             {:?}", $sh.name));
+                try!(writeln!(f, "    type:             {:?}", self.get_type()));
+                try!(writeln!(f, "    flags:            {:?}", $sh.flags));
+                try!(writeln!(f, "    address:          {:?}", $sh.address));
+                try!(writeln!(f, "    offset:           {:?}", $sh.offset));
+                try!(writeln!(f, "    size:             {:?}", $sh.size));
+                try!(writeln!(f, "    link:             {:?}", $sh.link));
+                try!(writeln!(f, "    align:            {:?}", $sh.align));
+                try!(writeln!(f, "    entry size:       {:?}", $sh.entry_size));
+                Ok(())
+            }}
         }
-    }
-}
 
-impl<P: fmt::Debug> fmt::Display for SectionHeader_<P> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(writeln!(f, "Section header:"));
-        try!(writeln!(f, "    name:             {:?}", self.name));
-        try!(writeln!(f, "    type:             {:?}", self.type_));
-        try!(writeln!(f, "    flags:            {:?}", self.flags));
-        try!(writeln!(f, "    address:          {:?}", self.address));
-        try!(writeln!(f, "    offset:           {:?}", self.offset));
-        try!(writeln!(f, "    size:             {:?}", self.size));
-        try!(writeln!(f, "    link:             {:?}", self.link));
-        try!(writeln!(f, "    align:            {:?}", self.align));
-        try!(writeln!(f, "    entry size:       {:?}", self.entry_size));
-        Ok(())
+        match *self {
+            SectionHeader::Sh32(sh) => sh_display!(sh),
+            SectionHeader::Sh64(sh) => sh_display!(sh),
+        }
     }
 }
 
@@ -350,6 +345,7 @@ pub struct CompressionHeader32 {
     align: u32,
 }
 
+#[derive(Copy, Clone)]
 pub struct CompressionType_(u32);
 
 #[derive(Debug)]
@@ -363,9 +359,9 @@ impl CompressionType_ {
     fn as_compression_type(&self) -> CompressionType {
         match self.0 {
             1 => CompressionType::Zlib,
-            st if st >= COMPRESS_LOOS && st <= COMPRESS_HIOS => CompressionType::OsSpecific(st),
-            st if st >= COMPRESS_LOPROC && st <= COMPRESS_HIPROC => CompressionType::ProcessorSpecific(st),
-            _ => panic!("Invalid sh type"),
+            ct if ct >= COMPRESS_LOOS && ct <= COMPRESS_HIOS => CompressionType::OsSpecific(ct),
+            ct if ct >= COMPRESS_LOPROC && ct <= COMPRESS_HIPROC => CompressionType::ProcessorSpecific(ct),
+            _ => panic!("Invalid compression type"),
         }
     }
 }
@@ -439,14 +435,14 @@ pub struct NoteHeader {
 }
 
 impl NoteHeader {
-    fn name<'a>(&'a self, name_index: &'a u8) -> &'a str {
+    pub fn name<'a>(&'a self, name_index: &'a u8) -> &'a str {
         let result = parse_str(name_index, 0);
         // - 1 is due to null terminator
         assert!(result.len() == (self.name_size - 1) as usize);
         result
     }
 
-    fn desc<'a>(&'a self, name_index: &'a u8) -> &'a [u8] {
+    pub fn desc<'a>(&'a self, name_index: &'a u8) -> &'a [u8] {
         // Account for padding to the next u32.
         unsafe {
             let offset = (self.name_size + 3) & !0x3;
