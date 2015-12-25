@@ -3,162 +3,121 @@
 mod header;
 mod parsing;
 mod sections;
+mod symbol_table;
+mod dynamic;
+mod hash;
 
 use std::fs::File;
 use std::io::Read;
-use std::mem;
 
-use header::{Header, parse_header};
-use sections::parse_section_header;
-
+use header::Header;
+use sections::{SectionHeader, SectionIter, ShType};
+use parsing::parse_str;
+use symbol_table::Entry;
 
 pub type P32 = u32;
 pub type P64 = u64;
 
+pub struct ElfFile<'a> {
+    input: &'a [u8],
+    header: Header<'a>,
+}
+
+impl<'a> ElfFile<'a> {
+    pub fn new(input: &'a [u8]) -> ElfFile<'a> {
+        let header = header::parse_header(&input);
+        ElfFile {
+            input: input,
+            header: header,
+        }
+    }
+
+    pub fn section_header(&self, index: u16) -> SectionHeader<'a> {
+        sections::parse_section_header(&self.input, self.header, index)
+    }
+
+    pub fn section_iter<'b: 'a>(&'b self) -> SectionIter<'b, 'a> {
+        SectionIter {
+            file: &self,
+            next_index: 0,
+        }
+    }
+
+    pub fn get_string(&self, index: u32) -> &'a str {
+        parse_str(self.get_str_table(), index as usize)
+    }
+
+    // This is really, stupidly slow. Not sure how to fix that, perhaps keeping
+    // a HashTable mapping names to section header indices?
+    pub fn find_section_by_name(&'a self, name: &str) -> Option<SectionHeader<'a>> {
+        for sect in self.section_iter() {
+            if let Ok(sect_name) = sect.get_name(&self) {
+                if sect_name == name {
+                    return Some(sect);
+                }
+            }
+        }
+
+        None
+    }
+
+    fn get_str_table(&self) -> &'a u8 {
+        // TODO cache this
+        let header = sections::parse_section_header(self.input,
+                                                    self.header,
+                                                    self.header.pt2.sh_str_index());
+        &self.input[header.offset() as usize]
+    }
+}
+
 // Note if running on a 32bit system, then reading Elf64 files probably will not
 // work (maybe if the size of the file in bytes is < u32::Max).
 
-// TODO move to header
-fn sanity_check(header: &Header, input: &[u8]) -> Result<(), &'static str> {
-    use header::{HeaderPt1, HeaderPt2, Class, MAGIC};
+// TODO make this whole thing more library-like
+fn main() {
+    let buf = open_file("foo.o");
+    let elf_file = ElfFile::new(&buf);
+    println!("{}", elf_file.header);
+    header::sanity_check(&elf_file).unwrap();
 
-    macro_rules! check {
-        ($e:expr) => {
-            if !$e {
-                return Err("");
+    let mut sect_iter = elf_file.section_iter();
+    // Skip the first (dummy) section
+    sect_iter.next();
+    for sect in sect_iter {
+        println!("{}", sect.get_name(&elf_file).unwrap());
+        println!("{:?}", sect.get_type());
+        //println!("{}", sect);
+        sections::sanity_check(sect, &elf_file).unwrap();
+
+        if sect.get_type() == ShType::StrTab {
+            println!("{:?}", sect.get_data(&elf_file).to_strings().unwrap());
+        }
+
+        if sect.get_type() == ShType::SymTab {
+            if let sections::SectionData::SymbolTable64(data) = sect.get_data(&elf_file) {
+                for datum in data {
+                    println!("{}", datum.get_name(&elf_file));
+                }
+            } else {
+                unreachable!();
             }
-        };
-        ($e:expr, $msg: expr) => {
-            if !$e {
-                return Err($msg);
-            }
-        };
+        }
     }
 
-    check!(mem::size_of::<HeaderPt1>() == 16);
-    check!(header.pt1.magic == MAGIC, "bad magic number");
-    check!(mem::size_of::<HeaderPt1>() + header.pt2.size() == header.pt2.header_size() as usize,
-           "header_size does not match size of header");
-    match (&header.pt1.class, &header.pt2) {
-        (&Class::None, _) => return Err("No class"),
-        (&Class::ThirtyTwo, &HeaderPt2::Header32(_)) |
-        (&Class::SixtyFour, &HeaderPt2::Header64(_)) => {}
-        _ => return Err("Mismatch between specified and actual class"),
-    }
-    check!(!header.pt1.version.is_none(), "no version");
-    check!(!header.pt1.data.is_none(), "no data format");
-
-    check!(header.pt2.entry_point() < input.len() as u64, "entry point out of range");
-    check!(header.pt2.ph_offset() + (header.pt2.ph_entry_size() as u64) * (header.pt2.ph_count() as u64)
-           <= input.len() as u64, "program header table out of range");
-    check!(header.pt2.sh_offset() + (header.pt2.sh_entry_size() as u64) * (header.pt2.sh_count() as u64)
-           <= input.len() as u64, "section header table out of range");
-
-    // TODO check that SectionHeader_ is the same size as sh_entry_size, depending on class
-
-    Ok(())
+    let sect = elf_file.find_section_by_name(".rodata.const2794").unwrap();
+    println!("{}", sect);
 }
 
-fn main() {
-    let filename = "foo.o";
-    let mut f = File::open(filename).unwrap();
+// Helper function to open a file and read it into a buffer.
+// Allocates the buffer.
+fn open_file(name: &str) -> Vec<u8> {
+    let mut f = File::open(name).unwrap();
     let mut buf = Vec::new();
     assert!(f.read_to_end(&mut buf).unwrap() > 0);
-    let header = parse_header(&buf);
-    println!("{}", header);
-    sanity_check(&header, &buf).unwrap();
-    let sect = parse_section_header(&buf, header, 10);
-    println!("{}", sect);
-    println!("{}", sect.name_as_str(&buf, header));
+    buf
 }
-
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::mem;
-
-    #[test]
-    fn test_empty() {
-        let input: [u32; 1] = [0];
-        let input: [u8; 4] = unsafe { mem::transmute(input) };
-        assert!(parse(&input) == TempData(Vec::new()));
-        assert!(parse_no_copy(&input) == DataNoCopy(&[]));
-    }
-
-    #[test]
-    fn test_one() {
-        let input: [u32; 2] = [1, 42];
-        let input: [u8; 8] = unsafe { mem::transmute(input) };
-        assert!(parse(&input) == TempData(vec![42]));
-        assert!(parse_no_copy(&input) == DataNoCopy(&[42]));
-    }
 }
-
-
-// #![feature(custom_derive, plugin)]
-// #![plugin(serde_macros)]
-
-// extern crate serde;
-// #[macro_use]
-// extern crate nom;
-
-
-
-// impl Deserialize for Data {
-//     fn deserialize<D>(deserializer: &mut D) -> Result<i32, D::Error>
-//         where D: serde::Deserializer,
-//     {
-//         deserializer.visit(DataVisitor::new())
-//     }
-// }
-
-// struct DataVisitor {
-//     buf: Option<Vec<i32>>,
-// }
-
-// impl DataVisitor {
-//     fn new() -> DataVisitor {
-//         DataVisitor {
-//             buf: None,
-//         }
-//     }
-// }
-
-// impl serde::de::Visitor for DataVisitor {
-//     type Value = Data;
-// }
-
-
-// extern crate byteorder;
-
-// use byteorder::{ReadBytesExt, LittleEndian};
-
-
-// #[derive(PartialEq, Eq, Debug)]
-// pub struct TempData(Vec<i32>);
-
-// pub fn parse(input: &[u8]) -> TempData {
-//     let mut cursor = Cursor::new(input);
-//     let count = cursor.read_u32::<LittleEndian>().unwrap() as usize;
-//     let mut result = TempData(Vec::with_capacity(count));
-//     for _ in 0..count {
-//         result.0.push(cursor.read_i32::<LittleEndian>().unwrap());
-//     }
-//     result
-// }
-
-// #[derive(PartialEq, Eq, Debug)]
-// pub struct DataNoCopy<'a>(&'a [i32]);
-
-// pub fn parse_no_copy<'a>(input: &'a [u8]) -> DataNoCopy<'a> {
-//     let count = read_u32(input) as usize;
-//     DataNoCopy(parse_buf(&input[4..], count))
-// }
-
-// fn read_u32(input: &[u8]) -> u32 {
-//     unsafe {
-//         assert!(input.len() >= 4);
-//         *(mem::transmute::<_, &u32>(&input[0]))
-//     }
-// }

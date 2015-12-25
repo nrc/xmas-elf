@@ -1,11 +1,13 @@
 use std::fmt;
+use std::mem;
+use std::raw;
 
-use {P32, P64};
+use {P32, P64, ElfFile};
 use header::{Header, Class};
-use parsing::{parse_one, parse_str};
-
-// TODO iterate over section headers
-// TODO sanity_check
+use parsing::{parse_one, parse_array, parse_str_array, parse_str};
+use symbol_table;
+use dynamic::Dynamic;
+use hash::HashTable;
 
 pub fn parse_section_header<'a>(input: &'a [u8],
                                 header: Header<'a>,
@@ -26,6 +28,28 @@ pub fn parse_section_header<'a>(input: &'a [u8],
             SectionHeader::Sh64(header)
         }
         Class::None => unreachable!(),
+    }
+}
+
+pub struct SectionIter<'b, 'a: 'b> {
+    pub file: &'b ElfFile<'a>,
+    pub next_index: u16,
+}
+
+impl<'b, 'a> Iterator for SectionIter<'b, 'a> {
+    type Item = SectionHeader<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let count = self.file.header.pt2.sh_count();
+        if self.next_index >= count {
+            return None;
+        }
+
+        let result = Some(parse_section_header(&self.file.input,
+                                               self.file.header,
+                                               self.next_index));
+        self.next_index += 1;
+        result
     }
 }
 
@@ -60,14 +84,94 @@ macro_rules! getter {
 
 impl<'a> SectionHeader<'a> {
     // Note that this function is O(n) in the length of the name.
-    pub fn name_as_str(&self, input: &'a [u8], header: Header<'a>) -> &'a str {
-        // TODO move this to a method on header (and cache it eventually).
-        let header = parse_section_header(input, header, header.pt2.sh_str_index());
-        parse_str(&input[header.offset() as usize], self.name() as usize)
+    pub fn get_name(&self, elf_file: &ElfFile<'a>) -> Result<&'a str, &'static str> {
+        if self.get_type() == ShType::Null {
+            return Err("Attempt to get name of null section");
+        }
+
+        Ok(elf_file.get_string(self.name()))
+    }
+
+    pub fn get_type(&self) -> ShType {
+        self.type_().as_sh_type()
+    }
+
+    pub fn get_data(&self, elf_file: &ElfFile<'a>) -> SectionData<'a> {
+        type Dynamic32 = Dynamic<P32>;
+        type Dynamic64 = Dynamic<P64>;
+        macro_rules! array_data {
+            ($data32: ident, $data64: ident) => {{
+                let data = self.raw_data(elf_file);
+                match elf_file.header.pt1.class {
+                    Class::ThirtyTwo => SectionData::$data32(parse_array(data)),
+                    Class::SixtyFour => SectionData::$data64(parse_array(data)),
+                    Class::None => unreachable!(),
+                }
+            }}
+        }
+
+        match self.get_type() {
+            ShType::Null | ShType::NoBits => SectionData::Empty,
+            ShType::ProgBits | ShType::ShLib | ShType::OsSpecific(_) |
+            ShType::ProcessorSpecific(_) | ShType::User(_) => {
+                SectionData::Undefined(self.raw_data(elf_file))
+            }
+            ShType::SymTab | ShType::DynSym => {
+                array_data!(SymbolTable32, SymbolTable64)
+            }
+            ShType::StrTab => SectionData::StrArray(self.raw_data(elf_file)),
+            ShType::InitArray | ShType::FiniArray | ShType::PreInitArray => {
+                array_data!(FnArray32, FnArray64)
+            }
+            ShType::Rela => {
+                array_data!(Rela32, Rela64)
+            }
+            ShType::Rel => {
+                array_data!(Rel32, Rel64)
+            }
+            ShType::Dynamic => {
+                array_data!(Dynamic32, Dynamic64)                
+            }
+            ShType::Group => {
+                let data = self.raw_data(elf_file);
+                unsafe {
+                    let flags: &'a u32 = mem::transmute(&data[0]);
+                    let indicies: &'a [u32] = parse_array(&data[4..]);
+                    SectionData::Group { flags: flags, indicies: indicies }
+                }
+            }
+            ShType::SymTabShIndex => {
+                SectionData::SymTabShIndex(parse_array(self.raw_data(elf_file)))
+            }
+            ShType::Note => {
+                let data = self.raw_data(elf_file);
+                match elf_file.header.pt1.class {
+                    Class::ThirtyTwo => unimplemented!(),
+                    Class::SixtyFour => {
+                        let header: &'a NoteHeader = parse_one(&data[0..3]);
+                        let index = &data[3];
+                        SectionData::Note64(header, index)
+                    }
+                    Class::None => unreachable!(),
+                }
+
+            }
+            ShType::Hash => {
+                let data = self.raw_data(elf_file);
+                SectionData::HashTable(parse_one(&data[0..12]))
+            }
+        }
+    }
+
+    pub fn raw_data(&self, elf_file: &ElfFile<'a>) -> &'a [u8] {
+        assert!(self.get_type() != ShType::Null);
+        &elf_file.input[self.offset() as usize..(self.offset() + self.size()) as usize]
     }
 
     getter!(name, u32);
     getter!(offset, u64);
+    getter!(size, u64);
+    getter!(type_, ShType_);
 }
 
 impl<'a> fmt::Display for SectionHeader<'a> {
@@ -110,9 +214,10 @@ pub struct SectionHeader_<P> {
     entry_size: P,
 }
 
+#[derive(Copy, Clone)]
 pub struct ShType_(u32);
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ShType {
     Null,
     ProgBits,
@@ -137,7 +242,7 @@ pub enum ShType {
 }
 
 impl ShType_ {
-    fn as_sh_type(&self) -> ShType {
+    fn as_sh_type(self) -> ShType {
         match self.0 {
             0 => ShType::Null,
             1 => ShType::ProgBits,
@@ -168,6 +273,40 @@ impl ShType_ {
 impl fmt::Debug for ShType_ {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.as_sh_type().fmt(f)
+    }
+}
+
+pub enum SectionData<'a> {
+    Empty,
+    Undefined(&'a [u8]),
+    Group { flags: &'a u32, indicies: &'a[u32] },
+    StrArray(&'a [u8]),
+    FnArray32(&'a [u32]),
+    FnArray64(&'a [u64]),
+    SymbolTable32(&'a [symbol_table::Entry32]),
+    SymbolTable64(&'a [symbol_table::Entry64]),
+    SymTabShIndex(&'a [u32]),
+    // Note32 uses 4-byte words, which I'm not sure how to manage.
+    // The pointer is to the start of the name field in the note.
+    Note64(&'a NoteHeader, &'a u8),
+    Rela32(&'a [Rela<P32>]),
+    Rela64(&'a [Rela<P64>]),
+    Rel32(&'a [Rel<P32>]),
+    Rel64(&'a [Rel<P64>]),
+    Dynamic32(&'a [Dynamic<P64>]),
+    Dynamic64(&'a [Dynamic<P32>]),
+    HashTable(&'a HashTable),
+}
+
+impl<'a> SectionData<'a> {
+    // Allocates a Vec for the pointers (but not strings). O(n) in the size of
+    // the string table.
+    pub fn to_strings(&self) -> Result<Vec<&'a str>, ()> {
+        if let SectionData::StrArray(data) = *self {
+            Ok(parse_str_array(data))
+        } else {
+            Err(())
+        }
     }
 }
 
@@ -243,9 +382,85 @@ pub const COMPRESS_HIOS: u32   = 0x6fffffff;
 pub const COMPRESS_LOPROC: u32 = 0x70000000;
 pub const COMPRESS_HIPROC: u32 = 0x7fffffff;
 
-// TODO SHT_GROUP section
-
 // Group flags
 pub const GRP_COMDAT: u64   =        0x1;
 pub const GRP_MASKOS: u64   = 0x0ff00000;
 pub const GRP_MASKPROC: u64 = 0xf0000000;
+
+pub struct Rela<P> {
+    offset: P,
+    info: P,
+    addend: P,
+}
+
+pub struct Rel<P> {
+    offset: P,
+    info: P,    
+}
+
+impl Rela<P32> {
+    pub fn get_symbol_table_index(&self) -> u32 {
+        self.info >> 8
+    }
+    pub fn get_type(&self) -> u8 {
+        self.info as u8
+    }
+}
+impl Rela<P64> {
+    pub fn get_symbol_table_index(&self) -> u32 {
+        (self.info >> 32) as u32
+    }
+    pub fn get_type(&self) -> u32 {
+        (self.info & 0xffffffff) as u32
+    }
+}
+impl Rel<P32> {
+    pub fn get_symbol_table_index(&self) -> u32 {
+        self.info >> 8
+    }
+    pub fn get_type(&self) -> u8 {
+        self.info as u8
+    }
+}
+impl Rel<P64> {
+    pub fn get_symbol_table_index(&self) -> u32 {
+        (self.info >> 32) as u32
+    }
+    pub fn get_type(&self) -> u32 {
+        (self.info & 0xffffffff) as u32
+    }
+}
+#[derive(Debug)]
+#[repr(C)]
+pub struct NoteHeader {
+    name_size: u32,
+    desc_size: u32,
+    type_: u32,
+}
+
+impl NoteHeader {
+    fn name<'a>(&'a self, name_index: &'a u8) -> &'a str {
+        let result = parse_str(name_index, 0);
+        // - 1 is due to null terminator
+        assert!(result.len() == (self.name_size - 1) as usize);
+        result
+    }
+
+    fn desc<'a>(&'a self, name_index: &'a u8) -> &'a [u8] {
+        // Account for padding to the next u32.
+        unsafe {
+            let offset = (self.name_size + 3) & !0x3;
+            let ptr = (name_index as *const u8).offset(offset as isize);
+            let slice = raw::Slice { data: ptr, len: self.desc_size as usize };
+            mem::transmute(slice)
+        }
+    }
+}
+
+pub fn sanity_check<'a>(header: SectionHeader<'a>, file: &ElfFile<'a>) -> Result<(), &'static str> {
+    if header.get_type() == ShType::Null {
+        return Ok(());
+    }
+    // TODO
+    Ok(())
+}

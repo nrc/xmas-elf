@@ -1,7 +1,7 @@
 use std::fmt;
 use std::mem;
 
-use {P32, P64};
+use {P32, P64, ElfFile};
 use parsing::parse_one;
 
 
@@ -271,3 +271,41 @@ pub enum Machine {
 }
 
 // TODO any more constants that need to go in here?
+
+pub fn sanity_check(file: &ElfFile) -> Result<(), &'static str> {
+    macro_rules! check {
+        ($e:expr) => {
+            if !$e {
+                return Err("");
+            }
+        };
+        ($e:expr, $msg: expr) => {
+            if !$e {
+                return Err($msg);
+            }
+        };
+    }
+
+    check!(mem::size_of::<HeaderPt1>() == 16);
+    check!(file.header.pt1.magic == MAGIC, "bad magic number");
+    check!(mem::size_of::<HeaderPt1>() + file.header.pt2.size() == file.header.pt2.header_size() as usize,
+           "header_size does not match size of header");
+    match (&file.header.pt1.class, &file.header.pt2) {
+        (&Class::None, _) => return Err("No class"),
+        (&Class::ThirtyTwo, &HeaderPt2::Header32(_)) |
+        (&Class::SixtyFour, &HeaderPt2::Header64(_)) => {}
+        _ => return Err("Mismatch between specified and actual class"),
+    }
+    check!(!file.header.pt1.version.is_none(), "no version");
+    check!(!file.header.pt1.data.is_none(), "no data format");
+
+    check!(file.header.pt2.entry_point() < file.input.len() as u64, "entry point out of range");
+    check!(file.header.pt2.ph_offset() + (file.header.pt2.ph_entry_size() as u64) * (file.header.pt2.ph_count() as u64)
+           <= file.input.len() as u64, "program header table out of range");
+    check!(file.header.pt2.sh_offset() + (file.header.pt2.sh_entry_size() as u64) * (file.header.pt2.sh_count() as u64)
+           <= file.input.len() as u64, "section header table out of range");
+
+    // TODO check that SectionHeader_ is the same size as sh_entry_size, depending on class
+
+    Ok(())
+}
