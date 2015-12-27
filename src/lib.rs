@@ -15,19 +15,19 @@ macro_rules! check {
 }
 
 
-mod header;
+pub mod header;
 mod parsing;
-mod sections;
-mod program;
-mod symbol_table;
-mod dynamic;
-mod hash;
+pub mod sections;
+pub mod program;
+pub mod symbol_table;
+pub mod dynamic;
+pub mod hash;
 
 use std::fs::File;
 use std::io::Read;
 
 use header::Header;
-use sections::{SectionHeader, SectionIter, ShType};
+use sections::{SectionHeader, SectionIter};
 use program::{ProgramHeader, ProgramIter};
 use parsing::parse_str;
 use symbol_table::Entry;
@@ -36,8 +36,8 @@ pub type P32 = u32;
 pub type P64 = u64;
 
 pub struct ElfFile<'a> {
-    input: &'a [u8],
-    header: Header<'a>,
+    pub input: &'a [u8],
+    pub header: Header<'a>,
 }
 
 impl<'a> ElfFile<'a> {
@@ -99,58 +99,11 @@ impl<'a> ElfFile<'a> {
 // Note if running on a 32bit system, then reading Elf64 files probably will not
 // work (maybe if the size of the file in bytes is < u32::Max).
 
-// TODO make this whole thing more library-like
-fn main() {
-    let buf = open_file("foo");
-    let elf_file = ElfFile::new(&buf);
-    println!("{}", elf_file.header);
-    header::sanity_check(&elf_file).unwrap();
 
-    let mut sect_iter = elf_file.section_iter();
-    // Skip the first (dummy) section
-    sect_iter.next();
-    println!("sections");
-    for sect in sect_iter {
-        println!("{}", sect.get_name(&elf_file).unwrap());
-        println!("{:?}", sect.get_type());
-        //println!("{}", sect);
-        sections::sanity_check(sect, &elf_file).unwrap();
-
-        if sect.get_type() == ShType::StrTab {
-            //println!("{:?}", sect.get_data(&elf_file).to_strings().unwrap());
-        }
-
-        if sect.get_type() == ShType::SymTab {
-            if let sections::SectionData::SymbolTable64(data) = sect.get_data(&elf_file) {
-                for datum in data {
-                    //println!("{}", datum.get_name(&elf_file));
-                }
-            } else {
-                unreachable!();
-            }
-        }
-    }
-    let mut ph_iter = elf_file.program_iter();
-    println!("\nprogram headers");
-    for sect in ph_iter {
-        println!("{:?}", sect.get_type());
-        program::sanity_check(sect, &elf_file).unwrap();
-    }
-
-    let sect = elf_file.program_header(5);
-    println!("{}", sect);
-    let data = sect.get_data(&elf_file);
-    if let program::SegmentData::Note64(header, ptr) = data {
-        println!("{}: {:?}", header.name(ptr), header.desc(ptr));
-    }
-
-    //let sect = elf_file.find_section_by_name(".rodata.const2794").unwrap();
-    //println!("{}", sect);
-}
 
 // Helper function to open a file and read it into a buffer.
 // Allocates the buffer.
-fn open_file(name: &str) -> Vec<u8> {
+pub fn open_file(name: &str) -> Vec<u8> {
     let mut f = File::open(name).unwrap();
     let mut buf = Vec::new();
     assert!(f.read_to_end(&mut buf).unwrap() > 0);
