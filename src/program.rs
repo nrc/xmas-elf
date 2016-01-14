@@ -220,7 +220,7 @@ pub enum SegmentData<'a> {
     // Note32 uses 4-byte words, which I'm not sure how to manage.
     // The pointer is to the start of the name field in the note.
     Note64(&'a NoteHeader, &'a u8),
-    // TODO Interp has Phdr should probably be defined some how, but I can't find the details.
+    // TODO Interp and Phdr should probably be defined some how, but I can't find the details.
 }
 
 pub const TYPE_LOOS: u32   = 0x60000000;

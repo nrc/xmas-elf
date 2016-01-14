@@ -383,12 +383,14 @@ pub const GRP_COMDAT: u64   =        0x1;
 pub const GRP_MASKOS: u64   = 0x0ff00000;
 pub const GRP_MASKPROC: u64 = 0xf0000000;
 
+#[derive(Debug)]
 pub struct Rela<P> {
     offset: P,
     info: P,
     addend: P,
 }
 
+#[derive(Debug)]
 pub struct Rel<P> {
     offset: P,
     info: P,    
@@ -426,6 +428,7 @@ impl Rel<P64> {
         (self.info & 0xffffffff) as u32
     }
 }
+
 #[derive(Debug)]
 #[repr(C)]
 pub struct NoteHeader {

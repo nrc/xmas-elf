@@ -3,16 +3,6 @@ use std::raw::Slice;
 
 // These functions are all super-unsafe!
 
-// fn parse_buf<'a, T>(input: &'a [u8], count: usize) -> &'a [T] {
-//     unsafe {
-//         assert!(input.len() == count * mem::size_of::<T>());
-//         let mut data: &'a [T] = mem::transmute(input);
-//         let data_slice: &mut Slice<T> = mem::transmute(&mut data);
-//         data_slice.len = count;
-//         data
-//     }    
-// }
-
 pub fn parse_one<'a, T>(input: &'a [u8]) -> &'a T {
     unsafe {
         assert!(input.len() == mem::size_of::<T>());
@@ -26,9 +16,9 @@ pub fn parse_array<'a, T>(input: &'a [u8]) -> &'a [T] {
     unsafe {
         let t_size = mem::size_of::<T>();
         let mut data: &'a [T] = mem::transmute(input);
-        let data_slice: &mut Slice<T> = mem::transmute(&mut data);
-        assert!(data_slice.len % t_size == 0);
-        data_slice.len /= t_size;
+        let data_slice: *mut Slice<T> = mem::transmute(&mut data);
+        assert!((*data_slice).len % t_size == 0);
+        (*data_slice).len /= t_size;
         data
     }
 }
