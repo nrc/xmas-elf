@@ -1,5 +1,5 @@
 use {ElfFile, P32, P64};
-use parsing::{parse_one, parse_array};
+use zero::{read, read_array, Pod};
 use header::{Class, Header};
 use dynamic::Dynamic;
 use sections::NoteHeader;
@@ -21,11 +21,11 @@ pub fn parse_program_header<'a>(input: &'a [u8],
 
     match header.pt1.class {
         Class::ThirtyTwo => {
-            let header: &'a ProgramHeader32 = parse_one(&input[start..end]);
+            let header: &'a ProgramHeader32 = read(&input[start..end]);
             ProgramHeader::Ph32(header)
         }
         Class::SixtyFour => {
-            let header: &'a ProgramHeader64 = parse_one(&input[start..end]);
+            let header: &'a ProgramHeader64 = read(&input[start..end]);
             ProgramHeader::Ph64(header)
         }
         Class::None => unreachable!(),
@@ -71,6 +71,8 @@ pub struct ProgramHeader32 {
     align: u32,
 }
 
+unsafe impl Pod for ProgramHeader32 {}
+
 #[derive(Clone, Debug)]
 #[repr(C)]
 pub struct ProgramHeader64 {
@@ -83,6 +85,8 @@ pub struct ProgramHeader64 {
     mem_size: u64,
     align: u64,
 }
+
+unsafe impl Pod for ProgramHeader64 {}
 
 impl<'a> ProgramHeader<'a> {
     pub fn get_type(&self) -> Type {
@@ -125,8 +129,8 @@ macro_rules! ph_impl {
                     Type::Dynamic => {
                         let data = self.raw_data(elf_file);
                         match elf_file.header.pt1.class {
-                            Class::ThirtyTwo => SegmentData::Dynamic32(parse_array(data)),
-                            Class::SixtyFour => SegmentData::Dynamic64(parse_array(data)),
+                            Class::ThirtyTwo => SegmentData::Dynamic32(read_array(data)),
+                            Class::SixtyFour => SegmentData::Dynamic64(read_array(data)),
                             Class::None => unreachable!(),
                         }
                     }
@@ -135,8 +139,8 @@ macro_rules! ph_impl {
                         match elf_file.header.pt1.class {
                             Class::ThirtyTwo => unimplemented!(),
                             Class::SixtyFour => {
-                                let header: &'a NoteHeader = parse_one(&data[0..12]);
-                                let index = &data[12];
+                                let header: &'a NoteHeader = read(&data[0..12]);
+                                let index = &data[12..];
                                 SegmentData::Note64(header, index)
                             }
                             Class::None => unreachable!(),
@@ -219,7 +223,7 @@ pub enum SegmentData<'a> {
     Dynamic64(&'a [Dynamic<P32>]),
     // Note32 uses 4-byte words, which I'm not sure how to manage.
     // The pointer is to the start of the name field in the note.
-    Note64(&'a NoteHeader, &'a u8),
+    Note64(&'a NoteHeader, &'a [u8]),
     // TODO Interp and Phdr should probably be defined some how, but I can't find the details.
 }
 

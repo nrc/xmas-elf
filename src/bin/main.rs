@@ -34,7 +34,7 @@ fn main() {
             }
         }
     }
-    let mut ph_iter = elf_file.program_iter();
+    let ph_iter = elf_file.program_iter();
     println!("\nprogram headers");
     for sect in ph_iter {
         println!("{:?}", sect.get_type());

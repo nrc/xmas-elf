@@ -1,10 +1,13 @@
 use symbol_table::Entry;
+use zero::Pod;
 
 pub struct HashTable {
     bucket_count: u32,
     chain_count: u32,
     first_bucket: u32,
 }
+
+unsafe impl Pod for HashTable {}
 
 pub fn hash(input: &str) -> u32 {
     let mut result = 0;

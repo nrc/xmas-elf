@@ -2,22 +2,22 @@ use std::fmt;
 use std::mem;
 
 use {P32, P64, ElfFile};
-use parsing::parse_one;
+use zero::{read, Pod};
 
 
 pub fn parse_header<'a>(input: &'a [u8]) -> Header<'a> {
     let size_pt1 = mem::size_of::<HeaderPt1>();
-    let header_1: &'a HeaderPt1 = parse_one(&input[..size_pt1]);
+    let header_1: &'a HeaderPt1 = read(&input[..size_pt1]);
     assert!(header_1.magic == MAGIC);
 
     let header_2 = match header_1.class {
         Class::None => HeaderPt2::None,
         Class::ThirtyTwo => {
-            let header_2: &'a HeaderPt2_<P32> = parse_one(&input[size_pt1..size_pt1+mem::size_of::<HeaderPt2_<P32>>()]);
+            let header_2: &'a HeaderPt2_<P32> = read(&input[size_pt1..size_pt1+mem::size_of::<HeaderPt2_<P32>>()]);
             HeaderPt2::Header32(header_2)
         }
         Class::SixtyFour => {
-            let header_2: &'a HeaderPt2_<P64> = parse_one(&input[size_pt1..size_pt1+mem::size_of::<HeaderPt2_<P64>>()]);
+            let header_2: &'a HeaderPt2_<P64> = read(&input[size_pt1..size_pt1+mem::size_of::<HeaderPt2_<P64>>()]);
             HeaderPt2::Header64(header_2)
         }
     };
@@ -64,6 +64,8 @@ pub struct HeaderPt1 {
     pub abi_version: u8,
     pub padding: [u8; 7],
 }
+
+unsafe impl Pod for HeaderPt1 {}
 
 #[derive(Clone, Copy)]
 pub enum HeaderPt2<'a> {
@@ -130,6 +132,8 @@ pub struct HeaderPt2_<P> {
     pub sh_count: u16,
     pub sh_str_index: u16,
 }
+
+unsafe impl<P> Pod for HeaderPt2_<P> {}
 
 impl<P: fmt::Display> fmt::Display for HeaderPt2_<P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

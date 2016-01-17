@@ -14,9 +14,9 @@ macro_rules! check {
     };
 }
 
+extern crate zero;
 
 pub mod header;
-mod parsing;
 pub mod sections;
 pub mod program;
 pub mod symbol_table;
@@ -29,7 +29,7 @@ use std::io::Read;
 use header::Header;
 use sections::{SectionHeader, SectionIter};
 use program::{ProgramHeader, ProgramIter};
-use parsing::parse_str;
+use zero::read_str;
 use symbol_table::Entry;
 
 pub type P32 = u32;
@@ -72,7 +72,7 @@ impl<'a> ElfFile<'a> {
     }
 
     pub fn get_string(&self, index: u32) -> &'a str {
-        parse_str(self.get_str_table(), index as usize)
+        read_str(&self.get_str_table()[(index as usize)..])
     }
 
     // This is really, stupidly slow. Not sure how to fix that, perhaps keeping
@@ -89,10 +89,10 @@ impl<'a> ElfFile<'a> {
         None
     }
 
-    fn get_str_table(&self) -> &'a u8 {
+    fn get_str_table(&self) -> &'a [u8] {
         // TODO cache this?
         let header = self.section_header(self.header.pt2.sh_str_index());
-        &self.input[header.offset() as usize]
+        &self.input[(header.offset() as usize)..]
     }
 }
 

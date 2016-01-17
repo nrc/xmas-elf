@@ -1,10 +1,13 @@
 use std::fmt;
 use {P32, P64};
+use zero::Pod;
 
 pub struct Dynamic<P> {
     tag: Tag_<P>,
     un: P,
 }
+
+unsafe impl<P> Pod for Dynamic<P> {}
 
 #[derive(Copy, Clone)]
 pub struct Tag_<P>(P);

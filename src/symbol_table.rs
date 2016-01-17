@@ -1,6 +1,8 @@
 use ElfFile;
 use sections;
 
+use zero::Pod;
+
 use std::fmt;
 use std::mem;
 
@@ -25,6 +27,9 @@ pub struct Entry64 {
     value: u64,
     size: u64,
 }
+
+unsafe impl Pod for Entry32 {}
+unsafe impl Pod for Entry64 {}
 
 pub trait Entry {
     fn name(&self) -> u32;
