@@ -83,7 +83,9 @@ pub trait Entry {
             i => Some(elf_file.section_header(i)),
         }
     }
+}
 
+impl fmt::Display for Entry {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(writeln!(f, "Symbol table entry:"));
         try!(writeln!(f, "    name:             {:?}", self.name()));
@@ -111,17 +113,6 @@ macro_rules! impl_entry {
 }
 impl_entry!(Entry32);
 impl_entry!(Entry64);
-
-impl fmt::Display for Entry32 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        Entry::fmt(self, f)
-    }
-}
-impl fmt::Display for Entry64 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        Entry::fmt(self, f)
-    }
-}
 
 #[derive(Copy, Clone, Debug)]
 pub struct Visibility_(u8);
