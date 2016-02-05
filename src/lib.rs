@@ -76,7 +76,8 @@ impl<'a> ElfFile<'a> {
     }
 
     pub fn get_dyn_string(&self, index: u32) -> &'a str {
-        unimplemented!()
+        let header = self.find_section_by_name(".dynstr").unwrap();
+        read_str(&header.raw_data(self)[(index as usize)..])
     }
 
     // This is really, stupidly slow. Not sure how to fix that, perhaps keeping
