@@ -8,7 +8,7 @@ use std::mem;
 
 #[derive(Debug)]
 #[repr(C)]
-pub struct Entry32 {
+struct Entry32_ {
     name: u32,
     value: u32,
     size: u32,
@@ -19,7 +19,7 @@ pub struct Entry32 {
 
 #[derive(Debug)]
 #[repr(C)]
-pub struct Entry64 {
+struct Entry64_ {
     name: u32,
     info: u8,
     other: Visibility_,
@@ -28,8 +28,30 @@ pub struct Entry64 {
     size: u64,
 }
 
+unsafe impl Pod for Entry32_ {}
+unsafe impl Pod for Entry64_ {}
+
+#[derive(Debug)]
+#[repr(C)]
+pub struct Entry32(Entry32_);
+
+#[derive(Debug)]
+#[repr(C)]
+pub struct Entry64(Entry64_);
+
 unsafe impl Pod for Entry32 {}
 unsafe impl Pod for Entry64 {}
+
+#[derive(Debug)]
+#[repr(C)]
+pub struct DynEntry32(Entry32_);
+
+#[derive(Debug)]
+#[repr(C)]
+pub struct DynEntry64(Entry64_);
+
+unsafe impl Pod for DynEntry32 {}
+unsafe impl Pod for DynEntry64 {}
 
 pub trait Entry {
     fn name(&self) -> u32;
@@ -39,10 +61,7 @@ pub trait Entry {
     fn value(&self) -> u64;
     fn size(&self) -> u64;
 
-    // Note that this function is O(n) in the length of the name.
-    fn get_name<'a>(&'a self, elf_file: &ElfFile<'a>) -> &'a str {
-        elf_file.get_string(self.name())
-    }
+    fn get_name<'a>(&'a self, elf_file: &ElfFile<'a>) -> &'a str;
 
     fn get_other(&self) -> Visibility {
         self.other().as_visibility()
@@ -100,19 +119,25 @@ impl fmt::Display for Entry {
 }
 
 macro_rules! impl_entry {
-    ($name: ident) => {
+    ($name: ident with ElfFile::$strfunc: ident) => {
         impl Entry for $name {
-            fn name(&self) -> u32 { self.name }
-            fn info(&self) -> u8 { self.info }
-            fn other(&self) -> Visibility_ { self.other }
-            fn shndx(&self) -> u16 { self.shndx }
-            fn value(&self) -> u64 { self.value as u64 }
-            fn size(&self) -> u64 { self.size as u64 }
+            fn get_name<'a>(&'a self, elf_file: &ElfFile<'a>) -> &'a str {
+                elf_file.$strfunc(self.name())
+            }
+
+            fn name(&self) -> u32 { self.0.name }
+            fn info(&self) -> u8 { self.0.info }
+            fn other(&self) -> Visibility_ { self.0.other }
+            fn shndx(&self) -> u16 { self.0.shndx }
+            fn value(&self) -> u64 { self.0.value as u64 }
+            fn size(&self) -> u64 { self.0.size as u64 }
         }
     }
 }
-impl_entry!(Entry32);
-impl_entry!(Entry64);
+impl_entry!(Entry32 with ElfFile::get_string);
+impl_entry!(Entry64 with ElfFile::get_string);
+impl_entry!(DynEntry32 with ElfFile::get_dyn_string);
+impl_entry!(DynEntry64 with ElfFile::get_dyn_string);
 
 #[derive(Copy, Clone, Debug)]
 pub struct Visibility_(u8);

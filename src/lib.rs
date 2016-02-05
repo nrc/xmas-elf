@@ -75,6 +75,10 @@ impl<'a> ElfFile<'a> {
         read_str(&self.get_str_table()[(index as usize)..])
     }
 
+    pub fn get_dyn_string(&self, index: u32) -> &'a str {
+        unimplemented!()
+    }
+
     // This is really, stupidly slow. Not sure how to fix that, perhaps keeping
     // a HashTable mapping names to section header indices?
     pub fn find_section_by_name(&self, name: &str) -> Option<SectionHeader<'a>> {

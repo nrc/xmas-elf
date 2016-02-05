@@ -112,8 +112,11 @@ impl<'a> SectionHeader<'a> {
             ShType::ProcessorSpecific(_) | ShType::User(_) => {
                 SectionData::Undefined(self.raw_data(elf_file))
             }
-            ShType::SymTab | ShType::DynSym => {
+            ShType::SymTab => {
                 array_data!(SymbolTable32, SymbolTable64)
+            }
+            ShType::DynSym => {
+                array_data!(DynSymbolTable32, DynSymbolTable64)
             }
             ShType::StrTab => SectionData::StrArray(self.raw_data(elf_file)),
             ShType::InitArray | ShType::FiniArray | ShType::PreInitArray => {
@@ -282,6 +285,8 @@ pub enum SectionData<'a> {
     FnArray64(&'a [u64]),
     SymbolTable32(&'a [symbol_table::Entry32]),
     SymbolTable64(&'a [symbol_table::Entry64]),
+    DynSymbolTable32(&'a [symbol_table::DynEntry32]),
+    DynSymbolTable64(&'a [symbol_table::DynEntry64]),
     SymTabShIndex(&'a [u32]),
     // Note32 uses 4-byte words, which I'm not sure how to manage.
     // The pointer is to the start of the name field in the note.
