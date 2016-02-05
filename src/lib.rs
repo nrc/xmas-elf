@@ -53,7 +53,7 @@ impl<'a> ElfFile<'a> {
         sections::parse_section_header(self.input, self.header, index)
     }
 
-    pub fn section_iter<'b: 'a>(&'b self) -> SectionIter<'b, 'a> {
+    pub fn section_iter<'b>(&'b self) -> SectionIter<'b, 'a> {
         SectionIter {
             file: &self,
             next_index: 0,
@@ -64,7 +64,7 @@ impl<'a> ElfFile<'a> {
         program::parse_program_header(self.input, self.header, index)
     }    
 
-    pub fn program_iter<'b: 'a>(&'b self) -> ProgramIter<'b, 'a> {
+    pub fn program_iter<'b>(&'b self) -> ProgramIter<'b, 'a> {
         ProgramIter {
             file: &self,
             next_index: 0,
@@ -77,7 +77,7 @@ impl<'a> ElfFile<'a> {
 
     // This is really, stupidly slow. Not sure how to fix that, perhaps keeping
     // a HashTable mapping names to section header indices?
-    pub fn find_section_by_name(&'a self, name: &str) -> Option<SectionHeader<'a>> {
+    pub fn find_section_by_name(&self, name: &str) -> Option<SectionHeader<'a>> {
         for sect in self.section_iter() {
             if let Ok(sect_name) = sect.get_name(&self) {
                 if sect_name == name {
