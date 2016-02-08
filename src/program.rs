@@ -219,8 +219,8 @@ impl fmt::Debug for Type_ {
 pub enum SegmentData<'a> {
     Empty,
     Undefined(&'a [u8]),
-    Dynamic32(&'a [Dynamic<P64>]),
-    Dynamic64(&'a [Dynamic<P32>]),
+    Dynamic32(&'a [Dynamic<P32>]),
+    Dynamic64(&'a [Dynamic<P64>]),
     // Note32 uses 4-byte words, which I'm not sure how to manage.
     // The pointer is to the start of the name field in the note.
     Note64(&'a NoteHeader, &'a [u8]),
