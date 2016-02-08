@@ -88,6 +88,17 @@ pub struct ProgramHeader64 {
 
 unsafe impl Pod for ProgramHeader64 {}
 
+macro_rules! getter {
+    ($name: ident, $typ: ident) => {
+        pub fn $name(&self) -> $typ {
+            match *self {
+                ProgramHeader::Ph32(h) => h.$name as $typ,
+                ProgramHeader::Ph64(h) => h.$name as $typ,
+            }
+        }
+    }
+}
+
 impl<'a> ProgramHeader<'a> {
     pub fn get_type(&self) -> Type {
         match *self {
@@ -102,6 +113,14 @@ impl<'a> ProgramHeader<'a> {
             ProgramHeader::Ph64(ph) => ph.get_data(elf_file),
         }
     }
+
+    getter!(align, u64);
+    getter!(file_size, u64);
+    getter!(mem_size, u64);
+    getter!(offset, u64);
+    getter!(physical_addr, u64);
+    getter!(virtual_addr, u64);
+    getter!(flags, u32);
 }
 
 impl<'a> fmt::Display for ProgramHeader<'a> {
