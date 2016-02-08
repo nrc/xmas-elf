@@ -402,6 +402,12 @@ unsafe impl<P> Pod for Rela<P> {}
 unsafe impl<P> Pod for Rel<P> {}
 
 impl Rela<P32> {
+    pub fn get_offset(&self) -> u32 {
+        self.offset
+    }
+    pub fn get_addend(&self) -> u32 {
+        self.addend
+    }
     pub fn get_symbol_table_index(&self) -> u32 {
         self.info >> 8
     }
@@ -410,6 +416,12 @@ impl Rela<P32> {
     }
 }
 impl Rela<P64> {
+    pub fn get_offset(&self) -> u64 {
+        self.offset
+    }
+    pub fn get_addend(&self) -> u64 {
+        self.addend
+    }
     pub fn get_symbol_table_index(&self) -> u32 {
         (self.info >> 32) as u32
     }
@@ -418,6 +430,9 @@ impl Rela<P64> {
     }
 }
 impl Rel<P32> {
+    pub fn get_offset(&self) -> u32 {
+        self.offset
+    }
     pub fn get_symbol_table_index(&self) -> u32 {
         self.info >> 8
     }
@@ -426,6 +441,9 @@ impl Rel<P32> {
     }
 }
 impl Rel<P64> {
+    pub fn get_offset(&self) -> u64 {
+        self.offset
+    }
     pub fn get_symbol_table_index(&self) -> u32 {
         (self.info >> 32) as u32
     }
