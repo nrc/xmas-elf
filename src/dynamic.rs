@@ -117,7 +117,7 @@ macro_rules! impls {
                     32 => Tag::PreInitArray,
                     33 => Tag::PreInitArraySize,
                     34 => Tag::SymTabShIndex,
-                    t if t >= 0x6000000D && t <= 0x6ffff000 => Tag::OsSpecific(t),
+                    t if t >= 0x6000000D && t <= 0x6fffffff => Tag::OsSpecific(t),
                     t if t >= 0x70000000 && t <= 0x7fffffff => Tag::ProcessorSpecific(t),
                     _ => panic!("Invalid value for tag"),
                 }
