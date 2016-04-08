@@ -12,7 +12,7 @@ unsafe impl<P> Pod for Dynamic<P> {}
 #[derive(Copy, Clone)]
 pub struct Tag_<P>(P);
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Tag<P> {
     Null,
     Needed,

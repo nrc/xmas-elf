@@ -160,7 +160,7 @@ impl Visibility_ {
 #[derive(Copy, Clone, Debug)]
 pub struct Binding_(u8);
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Binding {
     Local,
     Global,
@@ -186,7 +186,7 @@ impl Binding_ {
 #[derive(Copy, Clone, Debug)]
 pub struct Type_(u8);
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Type {
     NoType,
     Object,
