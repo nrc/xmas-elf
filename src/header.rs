@@ -247,7 +247,7 @@ impl fmt::Debug for Type_ {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Type {
     None,
     Relocatable,

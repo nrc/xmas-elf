@@ -355,7 +355,7 @@ pub struct CompressionHeader32 {
 #[derive(Copy, Clone)]
 pub struct CompressionType_(u32);
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum CompressionType {
     Zlib,
     OsSpecific(u32),
