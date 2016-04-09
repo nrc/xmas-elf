@@ -20,19 +20,19 @@ fn main() {
         //println!("{}", sect);
         sections::sanity_check(sect, &elf_file).unwrap();
 
-        if sect.get_type() == ShType::StrTab {
-            //println!("{:?}", sect.get_data(&elf_file).to_strings().unwrap());
-        }
+        // if sect.get_type() == ShType::StrTab {
+        //     println!("{:?}", sect.get_data(&elf_file).to_strings().unwrap());
+        // }
 
-        if sect.get_type() == ShType::SymTab {
-            if let sections::SectionData::SymbolTable64(data) = sect.get_data(&elf_file) {
-                for datum in data {
-                    //println!("{}", datum.get_name(&elf_file));
-                }
-            } else {
-                unreachable!();
-            }
-        }
+        // if sect.get_type() == ShType::SymTab {
+        //     if let sections::SectionData::SymbolTable64(data) = sect.get_data(&elf_file) {
+        //         for datum in data {
+        //             println!("{}", datum.get_name(&elf_file));
+        //         }
+        //     } else {
+        //         unreachable!();
+        //     }
+        // }
     }
     let ph_iter = elf_file.program_iter();
     println!("\nprogram headers");
