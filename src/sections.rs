@@ -166,6 +166,7 @@ impl<'a> SectionHeader<'a> {
         &elf_file.input[self.offset() as usize..(self.offset() + self.size()) as usize]
     }
 
+    getter!(flags, u64);
     getter!(name, u32);
     getter!(offset, u64);
     getter!(size, u64);
