@@ -12,26 +12,27 @@ use hash::HashTable;
 pub fn parse_section_header<'a>(input: &'a [u8],
                                 header: Header<'a>,
                                 index: u16)
-                                -> SectionHeader<'a> {
+                                -> Result<SectionHeader<'a>, &'static str> {
     // Trying to get index 0 (SHN_UNDEF) is also probably an error, but it is a legitimate section.
     assert!(index < SHN_LORESERVE,
             "Attempt to get section for a reserved index");
 
-    let start = (index as u64 * header.pt2.sh_entry_size() as u64 +
-                 header.pt2.sh_offset() as u64) as usize;
-    let end = start + header.pt2.sh_entry_size() as usize;
+    header.pt2.map(|pt2| {
+        let start = (index as u64 * pt2.sh_entry_size() as u64 + pt2.sh_offset() as u64) as usize;
+        let end = start + pt2.sh_entry_size() as usize;
 
-    match header.pt1.class {
-        Class::ThirtyTwo => {
-            let header: &'a SectionHeader_<P32> = read(&input[start..end]);
-            SectionHeader::Sh32(header)
+        match header.pt1.class {
+            Class::ThirtyTwo => {
+                let header: &'a SectionHeader_<P32> = read(&input[start..end]);
+                SectionHeader::Sh32(header)
+            }
+            Class::SixtyFour => {
+                let header: &'a SectionHeader_<P64> = read(&input[start..end]);
+                SectionHeader::Sh64(header)
+            }
+            Class::None => unreachable!(),
         }
-        Class::SixtyFour => {
-            let header: &'a SectionHeader_<P64> = read(&input[start..end]);
-            SectionHeader::Sh64(header)
-        }
-        Class::None => unreachable!(),
-    }
+    })
 }
 
 pub struct SectionIter<'b, 'a: 'b> {
@@ -43,14 +44,14 @@ impl<'b, 'a> Iterator for SectionIter<'b, 'a> {
     type Item = SectionHeader<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let count = self.file.header.pt2.sh_count();
+        let count = self.file.header.pt2.map(|pt2| pt2.sh_count()).unwrap_or(0);
         if self.next_index >= count {
             return None;
         }
 
-        let result = Some(self.file.section_header(self.next_index));
+        let result = self.file.section_header(self.next_index);
         self.next_index += 1;
-        result
+        result.ok()
     }
 }
 
@@ -78,7 +79,7 @@ macro_rules! getter {
             match *self {
                 SectionHeader::Sh32(h) => h.$name as $typ,
                 SectionHeader::Sh64(h) => h.$name as $typ,
-            }        
+            }
         }
     }
 }
@@ -86,18 +87,17 @@ macro_rules! getter {
 impl<'a> SectionHeader<'a> {
     // Note that this function is O(n) in the length of the name.
     pub fn get_name(&self, elf_file: &ElfFile<'a>) -> Result<&'a str, &'static str> {
-        if self.get_type() == ShType::Null {
-            return Err("Attempt to get name of null section");
-        }
-
-        Ok(elf_file.get_string(self.name()))
+        self.get_type().and_then(|typ| match typ {
+            ShType::Null => Err("Attempt to get name of null section"),
+            _ => elf_file.get_string(self.name()),
+        })
     }
 
-    pub fn get_type(&self) -> ShType {
+    pub fn get_type(&self) -> Result<ShType, &'static str> {
         self.type_().as_sh_type()
     }
 
-    pub fn get_data(&self, elf_file: &ElfFile<'a>) -> SectionData<'a> {
+    pub fn get_data(&self, elf_file: &ElfFile<'a>) -> Result<SectionData<'a>, &'static str> {
         macro_rules! array_data {
             ($data32: ident, $data64: ident) => {{
                 let data = self.raw_data(elf_file);
@@ -109,7 +109,7 @@ impl<'a> SectionHeader<'a> {
             }}
         }
 
-        match self.get_type() {
+        self.get_type().map(|typ| match typ {
             ShType::Null | ShType::NoBits => SectionData::Empty,
             ShType::ProgBits |
             ShType::ShLib |
@@ -155,11 +155,11 @@ impl<'a> SectionHeader<'a> {
                 let data = self.raw_data(elf_file);
                 SectionData::HashTable(read(&data[0..12]))
             }
-        }
+        })
     }
 
     pub fn raw_data(&self, elf_file: &ElfFile<'a>) -> &'a [u8] {
-        assert!(self.get_type() != ShType::Null);
+        assert!(self.get_type().unwrap() != ShType::Null);
         &elf_file.input[self.offset() as usize..(self.offset() + self.size()) as usize]
     }
 
@@ -240,30 +240,30 @@ pub enum ShType {
 }
 
 impl ShType_ {
-    fn as_sh_type(self) -> ShType {
+    fn as_sh_type(self) -> Result<ShType, &'static str> {
         match self.0 {
-            0 => ShType::Null,
-            1 => ShType::ProgBits,
-            2 => ShType::SymTab,
-            3 => ShType::StrTab,
-            4 => ShType::Rela,
-            5 => ShType::Hash,
-            6 => ShType::Dynamic,
-            7 => ShType::Note,
-            8 => ShType::NoBits,
-            9 => ShType::Rel,
-            10 => ShType::ShLib,
-            11 => ShType::DynSym,
+            0 => Ok(ShType::Null),
+            1 => Ok(ShType::ProgBits),
+            2 => Ok(ShType::SymTab),
+            3 => Ok(ShType::StrTab),
+            4 => Ok(ShType::Rela),
+            5 => Ok(ShType::Hash),
+            6 => Ok(ShType::Dynamic),
+            7 => Ok(ShType::Note),
+            8 => Ok(ShType::NoBits),
+            9 => Ok(ShType::Rel),
+            10 => Ok(ShType::ShLib),
+            11 => Ok(ShType::DynSym),
             // sic.
-            14 => ShType::InitArray,
-            15 => ShType::FiniArray,
-            16 => ShType::PreInitArray,
-            17 => ShType::Group,
-            18 => ShType::SymTabShIndex,
-            st if st >= SHT_LOOS && st <= SHT_HIOS => ShType::OsSpecific(st),
-            st if st >= SHT_LOPROC && st <= SHT_HIPROC => ShType::ProcessorSpecific(st),
-            st if st >= SHT_LOUSER && st <= SHT_HIUSER => ShType::User(st),
-            _ => panic!("Invalid sh type"),
+            14 => Ok(ShType::InitArray),
+            15 => Ok(ShType::FiniArray),
+            16 => Ok(ShType::PreInitArray),
+            17 => Ok(ShType::Group),
+            18 => Ok(ShType::SymTabShIndex),
+            st if st >= SHT_LOOS && st <= SHT_HIOS => Ok(ShType::OsSpecific(st)),
+            st if st >= SHT_LOPROC && st <= SHT_HIPROC => Ok(ShType::ProcessorSpecific(st)),
+            st if st >= SHT_LOUSER && st <= SHT_HIUSER => Ok(ShType::User(st)),
+            _ => Err("Invalid sh type"),
         }
     }
 }
@@ -375,14 +375,14 @@ pub enum CompressionType {
 }
 
 impl CompressionType_ {
-    fn as_compression_type(&self) -> CompressionType {
+    fn as_compression_type(&self) -> Result<CompressionType, &'static str> {
         match self.0 {
-            1 => CompressionType::Zlib,
-            ct if ct >= COMPRESS_LOOS && ct <= COMPRESS_HIOS => CompressionType::OsSpecific(ct),
+            1 => Ok(CompressionType::Zlib),
+            ct if ct >= COMPRESS_LOOS && ct <= COMPRESS_HIOS => Ok(CompressionType::OsSpecific(ct)),
             ct if ct >= COMPRESS_LOPROC && ct <= COMPRESS_HIPROC => {
-                CompressionType::ProcessorSpecific(ct)
+                Ok(CompressionType::ProcessorSpecific(ct))
             }
-            _ => panic!("Invalid compression type"),
+            _ => Err("Invalid compression type"),
         }
     }
 }
@@ -500,7 +500,7 @@ impl NoteHeader {
 }
 
 pub fn sanity_check<'a>(header: SectionHeader<'a>, file: &ElfFile<'a>) -> Result<(), &'static str> {
-    if header.get_type() == ShType::Null {
+    if try!(header.get_type()) == ShType::Null {
         return Ok(());
     }
     // TODO

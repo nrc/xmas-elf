@@ -46,7 +46,7 @@ impl<'a> ElfFile<'a> {
         }
     }
 
-    pub fn section_header(&self, index: u16) -> SectionHeader<'a> {
+    pub fn section_header(&self, index: u16) -> Result<SectionHeader<'a>, &'static str> {
         sections::parse_section_header(self.input, self.header, index)
     }
 
@@ -57,7 +57,7 @@ impl<'a> ElfFile<'a> {
         }
     }
 
-    pub fn program_header(&self, index: u16) -> ProgramHeader<'a> {
+    pub fn program_header(&self, index: u16) -> Result<ProgramHeader<'a>, &'static str> {
         program::parse_program_header(self.input, self.header, index)
     }
 
@@ -68,13 +68,13 @@ impl<'a> ElfFile<'a> {
         }
     }
 
-    pub fn get_string(&self, index: u32) -> &'a str {
-        read_str(&self.get_str_table()[(index as usize)..])
+    pub fn get_string(&self, index: u32) -> Result<&'a str, &'static str> {
+        self.get_str_table().map(|str_table| read_str(&str_table[(index as usize)..]))
     }
 
-    pub fn get_dyn_string(&self, index: u32) -> &'a str {
+    pub fn get_dyn_string(&self, index: u32) -> Result<&'a str, &'static str> {
         let header = self.find_section_by_name(".dynstr").unwrap();
-        read_str(&header.raw_data(self)[(index as usize)..])
+        Ok(read_str(&header.raw_data(self)[(index as usize)..]))
     }
 
     // This is really, stupidly slow. Not sure how to fix that, perhaps keeping
@@ -91,14 +91,44 @@ impl<'a> ElfFile<'a> {
         None
     }
 
-    fn get_str_table(&self) -> &'a [u8] {
+    fn get_str_table(&self) -> Result<&'a [u8], &'static str> {
         // TODO cache this?
-        let header = self.section_header(self.header.pt2.sh_str_index());
-        &self.input[(header.offset() as usize)..]
+        let header = self.section_header(try!(self.header.pt2).sh_str_index());
+        header.map(|h| &self.input[(h.offset() as usize)..])
     }
 }
 
 #[cfg(test)]
+#[macro_use]
+extern crate std;
+
+#[cfg(test)]
 mod test {
+    use std::prelude::v1::*;
+
+    use std::mem;
+
     use super::*;
+    use header::{Class, Data, HeaderPt1, HeaderPt2_, Version};
+
+    fn mk_elf_header(class: u8) -> Vec<u8> {
+        let header_size = mem::size_of::<HeaderPt1>() +
+                          match class {
+            1 => mem::size_of::<HeaderPt2_<P32>>(),
+            2 => mem::size_of::<HeaderPt2_<P64>>(),
+            _ => 0,
+        };
+        let mut header = vec![0x7f, 'E' as u8, 'L' as u8, 'F' as u8];
+        header.extend_from_slice(&[class, Data::LittleEndian as u8, Version::Current as u8]);
+        header.resize(header_size, 0);
+        header
+    }
+
+    #[test]
+    fn interpret_class() {
+        assert!(ElfFile::new(&mk_elf_header(Class::None as u8)).header.pt2.is_err());
+        assert!(ElfFile::new(&mk_elf_header(Class::ThirtyTwo as u8)).header.pt2.is_ok());
+        assert!(ElfFile::new(&mk_elf_header(Class::SixtyFour as u8)).header.pt2.is_ok());
+        assert!(ElfFile::new(&mk_elf_header(42u8)).header.pt2.is_err());
+    }
 }

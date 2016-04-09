@@ -55,71 +55,71 @@ pub enum Tag<P> {
 macro_rules! impls {
     ($p: ident) => {
         impl Dynamic<$p> {
-            pub fn get_tag(&self) -> Tag<$p> {
+            pub fn get_tag(&self) -> Result<Tag<$p>, &'static str> {
                 self.tag.as_tag()
             }
 
-            pub fn get_val(&self) -> $p {
-                match self.get_tag() {
+            pub fn get_val(&self) -> Result<$p, &'static str> {
+                match try!(self.get_tag()) {
                     Tag::Needed | Tag::PltRelSize | Tag::RelaSize | Tag::RelaEnt | Tag::StrSize |
                     Tag::SymEnt | Tag::SoName | Tag::RPath | Tag::RelSize | Tag::RelEnt | Tag::PltRel |
                     Tag::InitArraySize | Tag::FiniArraySize | Tag::RunPath | Tag::Flags |
-                    Tag::PreInitArraySize | Tag::OsSpecific(_) | Tag::ProcessorSpecific(_) => self.un,
-                    _ => panic!("val is not valid"),
+                    Tag::PreInitArraySize | Tag::OsSpecific(_) | Tag::ProcessorSpecific(_) => Ok(self.un),
+                    _ => Err("Invalid value"),
                 }
             }
 
-            pub fn get_ptr(&self) -> $p {
-                match self.get_tag() {
-                   Tag::Pltgot | Tag::Hash | Tag::StrTab | Tag::SymTab | Tag::Rela | Tag::Init | Tag::Fini |
-                   Tag::Rel | Tag::Debug | Tag::JmpRel | Tag::InitArray | Tag::FiniArray |
-                   Tag::PreInitArray | Tag::SymTabShIndex  | Tag::OsSpecific(_) | Tag::ProcessorSpecific(_)
-                   => self.un,
-                    _ => panic!("ptr is not valid"),
+            pub fn get_ptr(&self) -> Result<$p, &'static str> {
+                match try!(self.get_tag()) {
+                    Tag::Pltgot | Tag::Hash | Tag::StrTab | Tag::SymTab | Tag::Rela | Tag::Init | Tag::Fini |
+                    Tag::Rel | Tag::Debug | Tag::JmpRel | Tag::InitArray | Tag::FiniArray |
+                    Tag::PreInitArray | Tag::SymTabShIndex  | Tag::OsSpecific(_) | Tag::ProcessorSpecific(_)
+                    => Ok(self.un),
+                     _ => Err("Invalid ptr"),
                 }
             }
         }
 
         impl Tag_<$p> {
-            fn as_tag(self) -> Tag<$p> {
+            fn as_tag(self) -> Result<Tag<$p>, &'static str> {
                 match self.0 {
-                    0 => Tag::Null,
-                    1 => Tag::Needed,
-                    2 => Tag::PltRelSize,
-                    3 => Tag::Pltgot,
-                    4 => Tag::Hash,
-                    5 => Tag::StrTab,
-                    6 => Tag::SymTab,
-                    7 => Tag::Rela,
-                    8 => Tag::RelaSize,
-                    9 => Tag::RelaEnt,
-                    10 => Tag::StrSize,
-                    11 => Tag::SymEnt,
-                    12 => Tag::Init,
-                    13 => Tag::Fini,
-                    14 => Tag::SoName,
-                    15 => Tag::RPath,
-                    16 => Tag::Symbolic,
-                    17 => Tag::Rel,
-                    18 => Tag::RelSize,
-                    19 => Tag::RelEnt,
-                    20 => Tag::PltRel,
-                    21 => Tag::Debug,
-                    22 => Tag::TextRel,
-                    23 => Tag::JmpRel,
-                    24 => Tag::BindNow,
-                    25 => Tag::InitArray,
-                    26 => Tag::FiniArray,
-                    27 => Tag::InitArraySize,
-                    28 => Tag::FiniArraySize,
-                    29 => Tag::RunPath,
-                    30 => Tag::Flags,
-                    32 => Tag::PreInitArray,
-                    33 => Tag::PreInitArraySize,
-                    34 => Tag::SymTabShIndex,
-                    t if t >= 0x6000000D && t <= 0x6fffffff => Tag::OsSpecific(t),
-                    t if t >= 0x70000000 && t <= 0x7fffffff => Tag::ProcessorSpecific(t),
-                    _ => panic!("Invalid value for tag"),
+                    0 => Ok(Tag::Null),
+                    1 => Ok(Tag::Needed),
+                    2 => Ok(Tag::PltRelSize),
+                    3 => Ok(Tag::Pltgot),
+                    4 => Ok(Tag::Hash),
+                    5 => Ok(Tag::StrTab),
+                    6 => Ok(Tag::SymTab),
+                    7 => Ok(Tag::Rela),
+                    8 => Ok(Tag::RelaSize),
+                    9 => Ok(Tag::RelaEnt),
+                    10 => Ok(Tag::StrSize),
+                    11 => Ok(Tag::SymEnt),
+                    12 => Ok(Tag::Init),
+                    13 => Ok(Tag::Fini),
+                    14 => Ok(Tag::SoName),
+                    15 => Ok(Tag::RPath),
+                    16 => Ok(Tag::Symbolic),
+                    17 => Ok(Tag::Rel),
+                    18 => Ok(Tag::RelSize),
+                    19 => Ok(Tag::RelEnt),
+                    20 => Ok(Tag::PltRel),
+                    21 => Ok(Tag::Debug),
+                    22 => Ok(Tag::TextRel),
+                    23 => Ok(Tag::JmpRel),
+                    24 => Ok(Tag::BindNow),
+                    25 => Ok(Tag::InitArray),
+                    26 => Ok(Tag::FiniArray),
+                    27 => Ok(Tag::InitArraySize),
+                    28 => Ok(Tag::FiniArraySize),
+                    29 => Ok(Tag::RunPath),
+                    30 => Ok(Tag::Flags),
+                    32 => Ok(Tag::PreInitArray),
+                    33 => Ok(Tag::PreInitArraySize),
+                    34 => Ok(Tag::SymTabShIndex),
+                    t if t >= 0x6000000D && t <= 0x6fffffff => Ok(Tag::OsSpecific(t)),
+                    t if t >= 0x70000000 && t <= 0x7fffffff => Ok(Tag::ProcessorSpecific(t)),
+                    _ => Err("Invalid tag value"),
                 }
             }
         }
