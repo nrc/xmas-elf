@@ -1,6 +1,6 @@
 [package]
 name = "xmas-elf"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Nick Cameron <ncameron@mozilla.com>"]
 description = "Library for parsing and navigatin ELF data; zero-allocation, type-safe."
 license = "Apache-2.0/MIT"
@@ -8,3 +8,7 @@ repository = "https://github.com/nrc/xmas-elf"
 
 [dependencies]
 zero = "0.1"
+
+[[bin]]
+name = "xmas_elf"
+publish = "false"
