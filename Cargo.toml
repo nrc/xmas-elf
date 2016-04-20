@@ -12,3 +12,4 @@ zero = "0.1"
 [[bin]]
 name = "xmas_elf"
 publish = "false"
+doc = false
