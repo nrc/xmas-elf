@@ -1,4 +1,4 @@
-use std::fmt;
+use core::fmt;
 use {P32, P64};
 use zero::Pod;
 

@@ -4,8 +4,8 @@ use header::{Class, Header};
 use dynamic::Dynamic;
 use sections::NoteHeader;
 
-use std::mem;
-use std::fmt;
+use core::mem;
+use core::fmt;
 
 
 pub fn parse_program_header<'a>(input: &'a [u8],
@@ -278,7 +278,7 @@ pub fn sanity_check<'a>(ph: ProgramHeader<'a>, elf_file: &ElfFile<'a>) -> Result
                    "entry point out of range");
             check!(ph.get_type() != Type::ShLib, "Shouldn't use ShLib");
             if ph.align > 1 {
-                println!("{} {} {}", ph.virtual_addr, ph.offset, ph.align);
+                //println!("{} {} {}", ph.virtual_addr, ph.offset, ph.align);
                 check!(ph.virtual_addr % ph.align == ph.offset % ph.align,
                        "Invalid combination of virtual_addr, offset, and align");
             }

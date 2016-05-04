@@ -1,5 +1,5 @@
-use std::fmt;
-use std::mem;
+use core::fmt;
+use core::mem;
 
 use {P32, P64, ElfFile};
 use zero::{read, Pod};

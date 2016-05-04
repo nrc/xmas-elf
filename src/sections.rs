@@ -1,6 +1,6 @@
-use std::fmt;
-use std::mem;
-use std::raw;
+use core::fmt;
+use core::mem;
+use core::raw;
 
 use {P32, P64, ElfFile};
 use header::{Header, Class};

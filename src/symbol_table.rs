@@ -3,8 +3,8 @@ use sections;
 
 use zero::Pod;
 
-use std::fmt;
-use std::mem;
+use core::fmt;
+use core::mem;
 
 #[derive(Debug)]
 #[repr(C)]
