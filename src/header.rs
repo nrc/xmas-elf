@@ -98,6 +98,9 @@ impl<'a> HeaderPt2<'a> {
     }
 
     // TODO move to impl Header
+    getter!(type_, Type_);
+    getter!(machine, Machine);
+    getter!(version, u32);
     getter!(header_size, u16);
     getter!(entry_point, u64);
     getter!(ph_offset, u64);
@@ -259,7 +262,7 @@ pub enum Type {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 #[repr(u16)]
 pub enum Machine {
     None = 0,
