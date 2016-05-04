@@ -2,9 +2,10 @@
 name = "xmas-elf"
 version = "0.2.0"
 authors = ["Nick Cameron <ncameron@mozilla.com>"]
-description = "Library for parsing and navigatin ELF data; zero-allocation, type-safe."
-license = "Apache-2.0/MIT"
+description = "Library for parsing and navigating ELF data; zero-allocation, type-safe."
+license = "Apache-2.0 OR MIT"
 repository = "https://github.com/nrc/xmas-elf"
+keywords = ["elf", "parser", "binary"]
 
 [dependencies]
 zero = "0.1"
