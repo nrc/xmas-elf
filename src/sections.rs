@@ -4,7 +4,7 @@ use std::raw;
 
 use {P32, P64, ElfFile};
 use header::{Header, Class};
-use zero::{read, read_array, read_str, read_strs_to_null, Pod};
+use zero::{read, read_array, read_str, read_strs_to_null, StrReaderIterator, Pod};
 use symbol_table;
 use dynamic::Dynamic;
 use hash::HashTable;
@@ -301,12 +301,23 @@ pub enum SectionData<'a> {
     HashTable(&'a HashTable),
 }
 
+pub struct SectionStrings<'a> {
+    inner: StrReaderIterator<'a>,
+}
+
+impl<'a> Iterator for SectionStrings<'a> {
+    type Item = &'a str;
+
+    #[inline]
+    fn next(&mut self) -> Option<&'a str> {
+        self.inner.next()
+    }
+}
+
 impl<'a> SectionData<'a> {
-    // Allocates a Vec for the pointers (but not strings). O(n) in the size of
-    // the string table.
-    pub fn to_strings(&self) -> Result<Vec<&'a str>, ()> {
+    pub fn strings(&self) -> Result<SectionStrings<'a>, ()> {
         if let SectionData::StrArray(data) = *self {
-            Ok(read_strs_to_null(data).collect())
+            Ok(SectionStrings { inner: read_strs_to_null(data) })
         } else {
             Err(())
         }
