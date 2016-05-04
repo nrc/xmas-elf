@@ -1,5 +1,5 @@
-use std::fmt;
-use std::mem;
+use core::fmt;
+use core::mem;
 
 use {P32, P64, ElfFile};
 use zero::{read, Pod};
@@ -13,11 +13,13 @@ pub fn parse_header<'a>(input: &'a [u8]) -> Header<'a> {
     let header_2 = match header_1.class {
         Class::None => HeaderPt2::None,
         Class::ThirtyTwo => {
-            let header_2: &'a HeaderPt2_<P32> = read(&input[size_pt1..size_pt1+mem::size_of::<HeaderPt2_<P32>>()]);
+            let header_2: &'a HeaderPt2_<P32> =
+                read(&input[size_pt1..size_pt1 + mem::size_of::<HeaderPt2_<P32>>()]);
             HeaderPt2::Header32(header_2)
         }
         Class::SixtyFour => {
-            let header_2: &'a HeaderPt2_<P64> = read(&input[size_pt1..size_pt1+mem::size_of::<HeaderPt2_<P64>>()]);
+            let header_2: &'a HeaderPt2_<P64> =
+                read(&input[size_pt1..size_pt1 + mem::size_of::<HeaderPt2_<P64>>()]);
             HeaderPt2::Header64(header_2)
         }
     };
@@ -92,10 +94,13 @@ impl<'a> HeaderPt2<'a> {
             HeaderPt2::None => 0,
             HeaderPt2::Header32(_) => mem::size_of::<HeaderPt2_<P32>>(),
             HeaderPt2::Header64(_) => mem::size_of::<HeaderPt2_<P64>>(),
-        }        
+        }
     }
 
     // TODO move to impl Header
+    getter!(type_, Type_);
+    getter!(machine, Machine);
+    getter!(version, u32);
     getter!(header_size, u16);
     getter!(entry_point, u64);
     getter!(ph_offset, u64);
@@ -213,23 +218,22 @@ impl Version {
 pub enum OsAbi {
     // or None
     SystemV = 0x00,
-    HpUx    = 0x01,
-    NetBSD  = 0x02,
-    Linux   = 0x03,
+    HpUx = 0x01,
+    NetBSD = 0x02,
+    Linux = 0x03,
     Solaris = 0x06,
-    Aix     = 0x07,
-    Irix    = 0x08,
+    Aix = 0x07,
+    Irix = 0x08,
     FreeBSD = 0x09,
     OpenBSD = 0x0C,
-    OpenVMS = 0x0D,
-    // FIXME there are many, many more of these
+    OpenVMS = 0x0D, // FIXME there are many, many more of these
 }
 
 #[derive(Clone, Copy)]
-pub struct Type_(u16);
+pub struct Type_(pub u16);
 
 impl Type_ {
-    fn as_type(self) -> Type {
+    pub fn as_type(self) -> Type {
         match self.0 {
             0 => Type::None,
             1 => Type::Relocatable,
@@ -258,20 +262,19 @@ pub enum Type {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 #[repr(u16)]
 pub enum Machine {
-    None    = 0,
-    Sparc   = 0x02,
-    X86     = 0x03,
-    Mips    = 0x08,
+    None = 0,
+    Sparc = 0x02,
+    X86 = 0x03,
+    Mips = 0x08,
     PowerPC = 0x14,
-    Arm     = 0x28,
-    SuperH  = 0x2A,
-    Ia64    = 0x32,
-    X86_64  = 0x3E,
-    AArch64 = 0xB7,
-    // FIXME there are many, many more of these
+    Arm = 0x28,
+    SuperH = 0x2A,
+    Ia64 = 0x32,
+    X86_64 = 0x3E,
+    AArch64 = 0xB7, // FIXME there are many, many more of these
 }
 
 // TODO any more constants that need to go in here?
@@ -279,7 +282,8 @@ pub enum Machine {
 pub fn sanity_check(file: &ElfFile) -> Result<(), &'static str> {
     check!(mem::size_of::<HeaderPt1>() == 16);
     check!(file.header.pt1.magic == MAGIC, "bad magic number");
-    check!(mem::size_of::<HeaderPt1>() + file.header.pt2.size() == file.header.pt2.header_size() as usize,
+    check!(mem::size_of::<HeaderPt1>() + file.header.pt2.size() ==
+           file.header.pt2.header_size() as usize,
            "header_size does not match size of header");
     match (&file.header.pt1.class, &file.header.pt2) {
         (&Class::None, _) => return Err("No class"),
@@ -290,11 +294,16 @@ pub fn sanity_check(file: &ElfFile) -> Result<(), &'static str> {
     check!(!file.header.pt1.version.is_none(), "no version");
     check!(!file.header.pt1.data.is_none(), "no data format");
 
-    check!(file.header.pt2.entry_point() < file.input.len() as u64, "entry point out of range");
-    check!(file.header.pt2.ph_offset() + (file.header.pt2.ph_entry_size() as u64) * (file.header.pt2.ph_count() as u64)
-           <= file.input.len() as u64, "program header table out of range");
-    check!(file.header.pt2.sh_offset() + (file.header.pt2.sh_entry_size() as u64) * (file.header.pt2.sh_count() as u64)
-           <= file.input.len() as u64, "section header table out of range");
+    check!(file.header.pt2.entry_point() < file.input.len() as u64,
+           "entry point out of range");
+    check!(file.header.pt2.ph_offset() +
+           (file.header.pt2.ph_entry_size() as u64) * (file.header.pt2.ph_count() as u64) <=
+           file.input.len() as u64,
+           "program header table out of range");
+    check!(file.header.pt2.sh_offset() +
+           (file.header.pt2.sh_entry_size() as u64) * (file.header.pt2.sh_count() as u64) <=
+           file.input.len() as u64,
+           "section header table out of range");
 
     // TODO check that SectionHeader_ is the same size as sh_entry_size, depending on class
 

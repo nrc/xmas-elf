@@ -3,8 +3,8 @@ use sections;
 
 use zero::Pod;
 
-use std::fmt;
-use std::mem;
+use core::fmt;
+use core::mem;
 
 #[derive(Debug)]
 #[repr(C)]
@@ -98,7 +98,9 @@ pub trait Entry {
                     panic!("no .symtab_shndx section");
                 }
             }
-            sections::SHN_UNDEF | sections::SHN_ABS | sections::SHN_COMMON => None,
+            sections::SHN_UNDEF |
+            sections::SHN_ABS |
+            sections::SHN_COMMON => None,
             i => Some(elf_file.section_header(i)),
         }
     }

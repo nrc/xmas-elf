@@ -1,7 +1,22 @@
 extern crate xmas_elf;
 
-use xmas_elf::{open_file, ElfFile, header, program};
+use xmas_elf::{ElfFile, header, program};
 use xmas_elf::sections::{self, ShType};
+
+// Note if running on a 32bit system, then reading Elf64 files probably will not
+// work (maybe if the size of the file in bytes is < u32::Max).
+
+// Helper function to open a file and read it into a buffer.
+// Allocates the buffer.
+fn open_file(name: &str) -> Vec<u8> {
+    use std::fs::File;
+    use std::io::Read;
+
+    let mut f = File::open(name).unwrap();
+    let mut buf = Vec::new();
+    assert!(f.read_to_end(&mut buf).unwrap() > 0);
+    buf
+}
 
 // TODO make this whole thing more library-like
 fn main() {
@@ -17,7 +32,7 @@ fn main() {
     for sect in sect_iter {
         println!("{}", sect.get_name(&elf_file).unwrap());
         println!("{:?}", sect.get_type());
-        //println!("{}", sect);
+        // println!("{}", sect);
         sections::sanity_check(sect, &elf_file).unwrap();
 
         // if sect.get_type() == ShType::StrTab {
@@ -48,6 +63,6 @@ fn main() {
         println!("{}: {:?}", header.name(ptr), header.desc(ptr));
     }
 
-    //let sect = elf_file.find_section_by_name(".rodata.const2794").unwrap();
-    //println!("{}", sect);
+    // let sect = elf_file.find_section_by_name(".rodata.const2794").unwrap();
+    // println!("{}", sect);
 }
