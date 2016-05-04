@@ -32,7 +32,7 @@ fn main() {
     for sect in sect_iter {
         println!("{}", sect.get_name(&elf_file).unwrap());
         println!("{:?}", sect.get_type());
-        //println!("{}", sect);
+        // println!("{}", sect);
         sections::sanity_check(sect, &elf_file).unwrap();
 
         // if sect.get_type() == ShType::StrTab {
@@ -63,6 +63,6 @@ fn main() {
         println!("{}: {:?}", header.name(ptr), header.desc(ptr));
     }
 
-    //let sect = elf_file.find_section_by_name(".rodata.const2794").unwrap();
-    //println!("{}", sect);
+    // let sect = elf_file.find_section_by_name(".rodata.const2794").unwrap();
+    // println!("{}", sect);
 }

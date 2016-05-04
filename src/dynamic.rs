@@ -57,7 +57,7 @@ macro_rules! impls {
         impl Dynamic<$p> {
             pub fn get_tag(&self) -> Tag<$p> {
                 self.tag.as_tag()
-            } 
+            }
 
             pub fn get_val(&self) -> $p {
                 match self.get_tag() {

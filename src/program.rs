@@ -12,8 +12,7 @@ pub fn parse_program_header<'a>(input: &'a [u8],
                                 header: Header<'a>,
                                 index: u16)
                                 -> ProgramHeader<'a> {
-    assert!(index < header.pt2.ph_count() &&
-            header.pt2.ph_offset() > 0 &&
+    assert!(index < header.pt2.ph_count() && header.pt2.ph_offset() > 0 &&
             header.pt2.ph_entry_size() > 0);
     let start = header.pt2.ph_offset() as usize +
                 index as usize * header.pt2.ph_entry_size() as usize;
@@ -242,19 +241,18 @@ pub enum SegmentData<'a> {
     Dynamic64(&'a [Dynamic<P64>]),
     // Note32 uses 4-byte words, which I'm not sure how to manage.
     // The pointer is to the start of the name field in the note.
-    Note64(&'a NoteHeader, &'a [u8]),
-    // TODO Interp and Phdr should probably be defined some how, but I can't find the details.
+    Note64(&'a NoteHeader, &'a [u8]), /* TODO Interp and Phdr should probably be defined some how, but I can't find the details. */
 }
 
-pub const TYPE_LOOS: u32   = 0x60000000;
-pub const TYPE_HIOS: u32   = 0x6fffffff;
+pub const TYPE_LOOS: u32 = 0x60000000;
+pub const TYPE_HIOS: u32 = 0x6fffffff;
 pub const TYPE_LOPROC: u32 = 0x70000000;
 pub const TYPE_HIPROC: u32 = 0x7fffffff;
 
-pub const FLAG_X: u32        =        0x1;
-pub const FLAG_W: u32        =        0x2;
-pub const FLAG_R: u32        =        0x4;
-pub const FLAG_MASKOS: u32   = 0x0ff00000;
+pub const FLAG_X: u32 = 0x1;
+pub const FLAG_W: u32 = 0x2;
+pub const FLAG_R: u32 = 0x4;
+pub const FLAG_MASKOS: u32 = 0x0ff00000;
 pub const FLAG_MASKPROC: u32 = 0xf0000000;
 
 pub fn sanity_check<'a>(ph: ProgramHeader<'a>, elf_file: &ElfFile<'a>) -> Result<(), &'static str> {
@@ -278,7 +276,7 @@ pub fn sanity_check<'a>(ph: ProgramHeader<'a>, elf_file: &ElfFile<'a>) -> Result
                    "entry point out of range");
             check!(ph.get_type() != Type::ShLib, "Shouldn't use ShLib");
             if ph.align > 1 {
-                //println!("{} {} {}", ph.virtual_addr, ph.offset, ph.align);
+                // println!("{} {} {}", ph.virtual_addr, ph.offset, ph.align);
                 check!(ph.virtual_addr % ph.align == ph.offset % ph.align,
                        "Invalid combination of virtual_addr, offset, and align");
             }

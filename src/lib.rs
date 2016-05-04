@@ -59,7 +59,7 @@ impl<'a> ElfFile<'a> {
 
     pub fn program_header(&self, index: u16) -> ProgramHeader<'a> {
         program::parse_program_header(self.input, self.header, index)
-    }    
+    }
 
     pub fn program_iter<'b>(&'b self) -> ProgramIter<'b, 'a> {
         ProgramIter {

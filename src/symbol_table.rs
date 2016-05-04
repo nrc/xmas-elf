@@ -98,7 +98,9 @@ pub trait Entry {
                     panic!("no .symtab_shndx section");
                 }
             }
-            sections::SHN_UNDEF | sections::SHN_ABS | sections::SHN_COMMON => None,
+            sections::SHN_UNDEF |
+            sections::SHN_ABS |
+            sections::SHN_COMMON => None,
             i => Some(elf_file.section_header(i)),
         }
     }
