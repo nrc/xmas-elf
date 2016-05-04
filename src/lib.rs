@@ -1,4 +1,3 @@
-#![feature(raw)]
 #![no_std]
 
 // TODO move to a module

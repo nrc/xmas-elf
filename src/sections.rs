@@ -1,6 +1,6 @@
 use core::fmt;
 use core::mem;
-use core::raw;
+use core::slice;
 
 use {P32, P64, ElfFile};
 use header::{Header, Class};
@@ -492,8 +492,7 @@ impl NoteHeader {
         unsafe {
             let offset = (self.name_size + 3) & !0x3;
             let ptr = (&input[0] as *const u8).offset(offset as isize);
-            let slice = raw::Slice { data: ptr, len: self.desc_size as usize };
-            mem::transmute(slice)
+            slice::from_raw_parts(ptr, self.desc_size as usize)
         }
     }
 }
