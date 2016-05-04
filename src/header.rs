@@ -227,10 +227,10 @@ pub enum OsAbi {
 }
 
 #[derive(Clone, Copy)]
-pub struct Type_(u16);
+pub struct Type_(pub u16);
 
 impl Type_ {
-    fn as_type(self) -> Type {
+    pub fn as_type(self) -> Type {
         match self.0 {
             0 => Type::None,
             1 => Type::Relocatable,
