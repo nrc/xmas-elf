@@ -23,9 +23,6 @@ pub mod symbol_table;
 pub mod dynamic;
 pub mod hash;
 
-use std::fs::File;
-use std::io::Read;
-
 use header::Header;
 use sections::{SectionHeader, SectionIter};
 use program::{ProgramHeader, ProgramIter};
@@ -99,20 +96,6 @@ impl<'a> ElfFile<'a> {
         let header = self.section_header(self.header.pt2.sh_str_index());
         &self.input[(header.offset() as usize)..]
     }
-}
-
-// Note if running on a 32bit system, then reading Elf64 files probably will not
-// work (maybe if the size of the file in bytes is < u32::Max).
-
-
-
-// Helper function to open a file and read it into a buffer.
-// Allocates the buffer.
-pub fn open_file(name: &str) -> Vec<u8> {
-    let mut f = File::open(name).unwrap();
-    let mut buf = Vec::new();
-    assert!(f.read_to_end(&mut buf).unwrap() > 0);
-    buf
 }
 
 #[cfg(test)]
