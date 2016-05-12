@@ -1,5 +1,8 @@
 extern crate xmas_elf;
 
+use std::path::Path;
+use std::env;
+use std::process;
 use xmas_elf::{ElfFile, header, program};
 use xmas_elf::sections::{self, ShType};
 
@@ -8,7 +11,7 @@ use xmas_elf::sections::{self, ShType};
 
 // Helper function to open a file and read it into a buffer.
 // Allocates the buffer.
-fn open_file(name: &str) -> Vec<u8> {
+fn open_file<P: AsRef<Path>>(name: P) -> Vec<u8> {
     use std::fs::File;
     use std::io::Read;
 
@@ -18,9 +21,8 @@ fn open_file(name: &str) -> Vec<u8> {
     buf
 }
 
-// TODO make this whole thing more library-like
-fn main() {
-    let buf = open_file("foo");
+fn display_binary_information<P: AsRef<Path>>(binary_path: P) {
+    let buf = open_file(binary_path);
     let elf_file = ElfFile::new(&buf);
     println!("{}", elf_file.header);
     header::sanity_check(&elf_file).unwrap();
@@ -65,4 +67,17 @@ fn main() {
 
     // let sect = elf_file.find_section_by_name(".rodata.const2794").unwrap();
     // println!("{}", sect);
+}
+
+// TODO make this whole thing more library-like
+fn main() {
+    let mut args = env::args();
+    let program_name = args.next();
+
+    if let Some(binary_path) = args.next() {
+        display_binary_information(binary_path);
+    } else {
+        println!("usage: {} <binary_path>", program_name.unwrap());
+        process::exit(1);
+    }
 }
