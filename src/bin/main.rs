@@ -4,7 +4,7 @@ use std::path::Path;
 use std::env;
 use std::process;
 use xmas_elf::{ElfFile, header, program};
-use xmas_elf::sections::{self, ShType};
+use xmas_elf::sections;
 
 // Note if running on a 32bit system, then reading Elf64 files probably will not
 // work (maybe if the size of the file in bytes is < u32::Max).
@@ -58,11 +58,18 @@ fn display_binary_information<P: AsRef<Path>>(binary_path: P) {
         program::sanity_check(sect, &elf_file).unwrap();
     }
 
-    let sect = elf_file.program_header(5);
-    println!("{}", sect);
-    let data = sect.get_data(&elf_file);
-    if let program::SegmentData::Note64(header, ptr) = data {
-        println!("{}: {:?}", header.name(ptr), header.desc(ptr));
+    match elf_file.program_header(5) {
+        Ok(sect) => {
+            println!("{}", sect);
+            match sect.get_data(&elf_file) {
+                Ok(program::SegmentData::Note64(header, ptr)) => {
+                    println!("{}: {:?}", header.name(ptr), header.desc(ptr))
+                }
+                Ok(_) => (),
+                Err(err) => println!("Error: {}", err),
+            }
+        }
+        Err(err) => println!("Error: {}", err),
     }
 
     // let sect = elf_file.find_section_by_name(".rodata.const2794").unwrap();

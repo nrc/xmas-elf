@@ -11,16 +11,16 @@ pub fn parse_header<'a>(input: &'a [u8]) -> Header<'a> {
     assert!(header_1.magic == MAGIC);
 
     let header_2 = match header_1.class {
-        Class::None => HeaderPt2::None,
+        Class::None => Err("Invalid ELF class"),
         Class::ThirtyTwo => {
             let header_2: &'a HeaderPt2_<P32> =
                 read(&input[size_pt1..size_pt1 + mem::size_of::<HeaderPt2_<P32>>()]);
-            HeaderPt2::Header32(header_2)
+            Ok(HeaderPt2::Header32(header_2))
         }
         Class::SixtyFour => {
             let header_2: &'a HeaderPt2_<P64> =
                 read(&input[size_pt1..size_pt1 + mem::size_of::<HeaderPt2_<P64>>()]);
-            HeaderPt2::Header64(header_2)
+            Ok(HeaderPt2::Header64(header_2))
         }
     };
     Header {
@@ -34,7 +34,7 @@ pub const MAGIC: [u8; 4] = [0x7f, 'E' as u8, 'L' as u8, 'F' as u8];
 #[derive(Clone, Copy)]
 pub struct Header<'a> {
     pub pt1: &'a HeaderPt1,
-    pub pt2: HeaderPt2<'a>,
+    pub pt2: Result<HeaderPt2<'a>, &'static str>,
 }
 
 // TODO add Header::section_count, because if sh_count = 0, then the real count is in the first section.
@@ -49,7 +49,7 @@ impl<'a> fmt::Display for Header<'a> {
         try!(writeln!(f, "    os abi:           {:?}", self.pt1.os_abi));
         try!(writeln!(f, "    abi version:      {:?}", self.pt1.abi_version));
         try!(writeln!(f, "    padding:          {:?}", self.pt1.padding));
-        try!(write!(f, "{}", self.pt2));
+        try!(self.pt2.ok().map_or(Ok(()), |pt2| write!(f, "{}", pt2)));
         Ok(())
     }
 }
@@ -71,7 +71,6 @@ unsafe impl Pod for HeaderPt1 {}
 
 #[derive(Clone, Copy)]
 pub enum HeaderPt2<'a> {
-    None,
     Header32(&'a HeaderPt2_<P32>),
     Header64(&'a HeaderPt2_<P64>),
 }
@@ -80,10 +79,9 @@ macro_rules! getter {
     ($name: ident, $typ: ident) => {
         pub fn $name(&self) -> $typ {
             match *self {
-                HeaderPt2::None => panic!(),
                 HeaderPt2::Header32(h) => h.$name as $typ,
                 HeaderPt2::Header64(h) => h.$name as $typ,
-            }        
+            }
         }
     }
 }
@@ -91,7 +89,6 @@ macro_rules! getter {
 impl<'a> HeaderPt2<'a> {
     pub fn size(&self) -> usize {
         match *self {
-            HeaderPt2::None => 0,
             HeaderPt2::Header32(_) => mem::size_of::<HeaderPt2_<P32>>(),
             HeaderPt2::Header64(_) => mem::size_of::<HeaderPt2_<P64>>(),
         }
@@ -115,7 +112,6 @@ impl<'a> HeaderPt2<'a> {
 impl<'a> fmt::Display for HeaderPt2<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            HeaderPt2::None => write!(f, ""),
             HeaderPt2::Header32(h) => write!(f, "{}", h),
             HeaderPt2::Header64(h) => write!(f, "{}", h),
         }
@@ -282,26 +278,24 @@ pub enum Machine {
 pub fn sanity_check(file: &ElfFile) -> Result<(), &'static str> {
     check!(mem::size_of::<HeaderPt1>() == 16);
     check!(file.header.pt1.magic == MAGIC, "bad magic number");
-    check!(mem::size_of::<HeaderPt1>() + file.header.pt2.size() ==
-           file.header.pt2.header_size() as usize,
+    let pt2 = try!(file.header.pt2);
+    check!(mem::size_of::<HeaderPt1>() + pt2.size() == pt2.header_size() as usize,
            "header_size does not match size of header");
     match (&file.header.pt1.class, &file.header.pt2) {
         (&Class::None, _) => return Err("No class"),
-        (&Class::ThirtyTwo, &HeaderPt2::Header32(_)) |
-        (&Class::SixtyFour, &HeaderPt2::Header64(_)) => {}
+        (&Class::ThirtyTwo, &Ok(HeaderPt2::Header32(_))) |
+        (&Class::SixtyFour, &Ok(HeaderPt2::Header64(_))) => {}
         _ => return Err("Mismatch between specified and actual class"),
     }
     check!(!file.header.pt1.version.is_none(), "no version");
     check!(!file.header.pt1.data.is_none(), "no data format");
 
-    check!(file.header.pt2.entry_point() < file.input.len() as u64,
+    check!(pt2.entry_point() < file.input.len() as u64,
            "entry point out of range");
-    check!(file.header.pt2.ph_offset() +
-           (file.header.pt2.ph_entry_size() as u64) * (file.header.pt2.ph_count() as u64) <=
+    check!(pt2.ph_offset() + (pt2.ph_entry_size() as u64) * (pt2.ph_count() as u64) <=
            file.input.len() as u64,
            "program header table out of range");
-    check!(file.header.pt2.sh_offset() +
-           (file.header.pt2.sh_entry_size() as u64) * (file.header.pt2.sh_count() as u64) <=
+    check!(pt2.sh_offset() + (pt2.sh_entry_size() as u64) * (pt2.sh_count() as u64) <=
            file.input.len() as u64,
            "section header table out of range");
 
