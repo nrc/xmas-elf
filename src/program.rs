@@ -3,28 +3,47 @@ use zero::{read, read_array, Pod};
 use header::{Class, Header};
 use dynamic::Dynamic;
 use sections::NoteHeader;
+use util::{ResultExt, convert_endianess_u32, convert_endianess_u64};
 
 use core::mem;
 use core::fmt;
 
 
 pub fn parse_program_header<'a>(input: &'a [u8],
-                                header: Header<'a>,
+                                header: &Header,
                                 index: u16)
-                                -> Result<ProgramHeader<'a>, &'static str> {
-    let pt2 = try!(header.pt2);
+                                -> Result<ProgramHeader, &'static str> {
+    let pt2 = try!(header.pt2.ok_as_ref());
     assert!(index < pt2.ph_count() && pt2.ph_offset() > 0 && pt2.ph_entry_size() > 0);
     let start = pt2.ph_offset() as usize + index as usize * pt2.ph_entry_size() as usize;
     let end = start + pt2.ph_entry_size() as usize;
 
     match header.pt1.class {
         Class::ThirtyTwo => {
-            let header: &'a ProgramHeader32 = read(&input[start..end]);
-            Ok(ProgramHeader::Ph32(header))
+            let pheader_ref: &'a ProgramHeader32 = read(&input[start..end]);
+            let mut pheader = pheader_ref.clone();
+            convert_endianess_u32(header.pt1.data, &mut pheader.type_.0);
+            convert_endianess_u32(header.pt1.data, &mut pheader.flags);
+            convert_endianess_u32(header.pt1.data, &mut pheader.offset);
+            convert_endianess_u32(header.pt1.data, &mut pheader.virtual_addr);
+            convert_endianess_u32(header.pt1.data, &mut pheader.physical_addr);
+            convert_endianess_u32(header.pt1.data, &mut pheader.file_size);
+            convert_endianess_u32(header.pt1.data, &mut pheader.mem_size);
+            convert_endianess_u32(header.pt1.data, &mut pheader.align);
+            Ok(ProgramHeader::Ph32(pheader))
         }
         Class::SixtyFour => {
-            let header: &'a ProgramHeader64 = read(&input[start..end]);
-            Ok(ProgramHeader::Ph64(header))
+            let pheader_ref: &'a ProgramHeader64 = read(&input[start..end]);
+            let mut pheader = pheader_ref.clone();
+            convert_endianess_u32(header.pt1.data, &mut pheader.type_.0);
+            convert_endianess_u32(header.pt1.data, &mut pheader.flags);
+            convert_endianess_u64(header.pt1.data, &mut pheader.offset);
+            convert_endianess_u64(header.pt1.data, &mut pheader.virtual_addr);
+            convert_endianess_u64(header.pt1.data, &mut pheader.physical_addr);
+            convert_endianess_u64(header.pt1.data, &mut pheader.file_size);
+            convert_endianess_u64(header.pt1.data, &mut pheader.mem_size);
+            convert_endianess_u64(header.pt1.data, &mut pheader.align);
+            Ok(ProgramHeader::Ph64(pheader))
         }
         Class::None => unreachable!(),
     }
@@ -36,10 +55,10 @@ pub struct ProgramIter<'b, 'a: 'b> {
 }
 
 impl<'b, 'a> Iterator for ProgramIter<'b, 'a> {
-    type Item = ProgramHeader<'a>;
+    type Item = ProgramHeader;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let count = self.file.header.pt2.map(|pt2| pt2.ph_count()).unwrap_or(0);
+        let count = self.file.header.pt2.as_ref().map(|pt2| pt2.ph_count()).unwrap_or(0);
         if self.next_index >= count {
             return None;
         }
@@ -50,10 +69,10 @@ impl<'b, 'a> Iterator for ProgramIter<'b, 'a> {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
-pub enum ProgramHeader<'a> {
-    Ph32(&'a ProgramHeader32),
-    Ph64(&'a ProgramHeader64),
+#[derive(Clone, Debug)]
+pub enum ProgramHeader {
+    Ph32(ProgramHeader32),
+    Ph64(ProgramHeader64),
 }
 
 #[derive(Clone, Debug)]
@@ -90,25 +109,25 @@ macro_rules! getter {
     ($name: ident, $typ: ident) => {
         pub fn $name(&self) -> $typ {
             match *self {
-                ProgramHeader::Ph32(h) => h.$name as $typ,
-                ProgramHeader::Ph64(h) => h.$name as $typ,
+                ProgramHeader::Ph32(ref h) => h.$name as $typ,
+                ProgramHeader::Ph64(ref h) => h.$name as $typ,
             }
         }
     }
 }
 
-impl<'a> ProgramHeader<'a> {
+impl<'a> ProgramHeader {
     pub fn get_type(&self) -> Result<Type, &'static str> {
         match *self {
-            ProgramHeader::Ph32(ph) => ph.get_type(),
-            ProgramHeader::Ph64(ph) => ph.get_type(),
+            ProgramHeader::Ph32(ref ph) => ph.get_type(),
+            ProgramHeader::Ph64(ref ph) => ph.get_type(),
         }
     }
 
     pub fn get_data(&self, elf_file: &ElfFile<'a>) -> Result<SegmentData<'a>, &'static str> {
         match *self {
-            ProgramHeader::Ph32(ph) => ph.get_data(elf_file),
-            ProgramHeader::Ph64(ph) => ph.get_data(elf_file),
+            ProgramHeader::Ph32(ref ph) => ph.get_data(elf_file),
+            ProgramHeader::Ph64(ref ph) => ph.get_data(elf_file),
         }
     }
 
@@ -121,11 +140,11 @@ impl<'a> ProgramHeader<'a> {
     getter!(flags, u32);
 }
 
-impl<'a> fmt::Display for ProgramHeader<'a> {
+impl fmt::Display for ProgramHeader {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            ProgramHeader::Ph32(ph) => ph.fmt(f),
-            ProgramHeader::Ph64(ph) => ph.fmt(f),
+            ProgramHeader::Ph32(ref ph) => ph.fmt(f),
+            ProgramHeader::Ph64(ref ph) => ph.fmt(f),
         }
     }
 }
@@ -254,11 +273,12 @@ pub const FLAG_R: u32 = 0x4;
 pub const FLAG_MASKOS: u32 = 0x0ff00000;
 pub const FLAG_MASKPROC: u32 = 0xf0000000;
 
-pub fn sanity_check<'a>(ph: ProgramHeader<'a>, elf_file: &ElfFile<'a>) -> Result<(), &'static str> {
-    let header = elf_file.header;
+pub fn sanity_check<'a>(ph: ProgramHeader, elf_file: &ElfFile<'a>) -> Result<(), &'static str> {
+    let header = &elf_file.header;
+    let pt2 = try!(header.pt2.ok_as_ref());
     match ph {
-        ProgramHeader::Ph32(ph) => {
-            check!(mem::size_of_val(ph) == try!(header.pt2).ph_entry_size() as usize,
+        ProgramHeader::Ph32(ref ph) => {
+            check!(mem::size_of_val(ph) == pt2.ph_entry_size() as usize,
                    "program header size mismatch");
             check!(((ph.offset + ph.file_size) as usize) < elf_file.input.len(),
                    "entry point out of range");
@@ -268,8 +288,8 @@ pub fn sanity_check<'a>(ph: ProgramHeader<'a>, elf_file: &ElfFile<'a>) -> Result
                        "Invalid combination of virtual_addr, offset, and align");
             }
         }
-        ProgramHeader::Ph64(ph) => {
-            check!(mem::size_of_val(ph) == try!(header.pt2).ph_entry_size() as usize,
+        ProgramHeader::Ph64(ref ph) => {
+            check!(mem::size_of_val(ph) == pt2.ph_entry_size() as usize,
                    "program header size mismatch");
             check!(((ph.offset + ph.file_size) as usize) < elf_file.input.len(),
                    "entry point out of range");

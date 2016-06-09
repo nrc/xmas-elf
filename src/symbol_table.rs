@@ -1,9 +1,9 @@
 use ElfFile;
 use sections;
+use util::{convert_endianess_u16, convert_endianess_u32, convert_endianess_u64};
 
 use zero::Pod;
 
-use core::fmt;
 use core::mem;
 
 #[derive(Debug)]
@@ -54,12 +54,12 @@ unsafe impl Pod for DynEntry32 {}
 unsafe impl Pod for DynEntry64 {}
 
 pub trait Entry {
-    fn name(&self) -> u32;
+    fn name<'a>(&self, elf_file: &ElfFile<'a>) -> u32;
     fn info(&self) -> u8;
     fn other(&self) -> Visibility_;
-    fn shndx(&self) -> u16;
-    fn value(&self) -> u64;
-    fn size(&self) -> u64;
+    fn shndx<'a>(&self, elf_file: &ElfFile<'a>) -> u16;
+    fn value<'a>(&self, elf_file: &ElfFile<'a>) -> u64;
+    fn size<'a>(&self, elf_file: &ElfFile<'a>) -> u64;
 
     fn get_name<'a>(&'a self, elf_file: &ElfFile<'a>) -> Result<&'a str, &'static str>;
 
@@ -78,8 +78,8 @@ pub trait Entry {
     fn get_section_header<'a>(&'a self,
                               elf_file: &ElfFile<'a>,
                               self_index: usize)
-                              -> Result<sections::SectionHeader<'a>, &'static str> {
-        match self.shndx() {
+                              -> Result<sections::SectionHeader, &'static str> {
+        match self.shndx(elf_file) {
             sections::SHN_XINDEX => {
                 // TODO factor out distinguished section names into sections consts
                 let header = elf_file.find_section_by_name(".symtab_shndx");
@@ -87,9 +87,13 @@ pub trait Entry {
                     assert!(try!(header.get_type()) == sections::ShType::SymTabShIndex);
                     if let sections::SectionData::SymTabShIndex(data) =
                            try!(header.get_data(elf_file)) {
+
+                        let mut index_value = data[self_index];
+                        convert_endianess_u32(elf_file.header.pt1.data, &mut index_value);
+
                         // TODO cope with u32 section indices (count is in sh_size of header 0, etc.)
                         // Note that it is completely bogus to crop to u16 here.
-                        let index = data[self_index] as u16;
+                        let index = index_value as u16;
                         assert!(index != sections::SHN_UNDEF);
                         elf_file.section_header(index)
                     } else {
@@ -107,40 +111,47 @@ pub trait Entry {
     }
 }
 
-impl fmt::Display for Entry {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(writeln!(f, "Symbol table entry:"));
-        try!(writeln!(f, "    name:             {:?}", self.name()));
-        try!(writeln!(f, "    binding:          {:?}", self.get_binding()));
-        try!(writeln!(f, "    type:             {:?}", self.get_type()));
-        try!(writeln!(f, "    other:            {:?}", self.get_other()));
-        try!(writeln!(f, "    shndx:            {:?}", self.shndx()));
-        try!(writeln!(f, "    value:            {:?}", self.value()));
-        try!(writeln!(f, "    size:             {:?}", self.size()));
-        Ok(())
-    }
-}
-
 macro_rules! impl_entry {
-    ($name: ident with ElfFile::$strfunc: ident) => {
+    ($name: ident with ElfFile::$strfunc: ident and $convert_endianess_pointer: expr) => {
         impl Entry for $name {
             fn get_name<'a>(&'a self, elf_file: &ElfFile<'a>) -> Result<&'a str, &'static str> {
-                elf_file.$strfunc(self.name())
+                elf_file.$strfunc(self.name(elf_file))
             }
 
-            fn name(&self) -> u32 { self.0.name }
+            fn name<'a>(&self, elf_file: &ElfFile<'a>) -> u32 {
+                let mut out = self.0.name;
+                convert_endianess_u32(elf_file.header.pt1.data, &mut out);
+                out
+            }
+
             fn info(&self) -> u8 { self.0.info }
             fn other(&self) -> Visibility_ { self.0.other }
-            fn shndx(&self) -> u16 { self.0.shndx }
-            fn value(&self) -> u64 { self.0.value as u64 }
-            fn size(&self) -> u64 { self.0.size as u64 }
+
+            fn shndx<'a>(&self, elf_file: &ElfFile<'a>) -> u16 {
+                let mut out = self.0.shndx;
+                convert_endianess_u16(elf_file.header.pt1.data, &mut out);
+                out
+            }
+
+            fn value<'a>(&self, elf_file: &ElfFile<'a>) -> u64 {
+                let mut out = self.0.value;
+                $convert_endianess_pointer(elf_file.header.pt1.data, &mut out);
+                out as u64
+            }
+
+            fn size<'a>(&self, elf_file: &ElfFile<'a>) -> u64 {
+                let mut out = self.0.size;
+                $convert_endianess_pointer(elf_file.header.pt1.data, &mut out);
+                out as u64
+            }
+
         }
     }
 }
-impl_entry!(Entry32 with ElfFile::get_string);
-impl_entry!(Entry64 with ElfFile::get_string);
-impl_entry!(DynEntry32 with ElfFile::get_dyn_string);
-impl_entry!(DynEntry64 with ElfFile::get_dyn_string);
+impl_entry!(Entry32 with ElfFile::get_string and convert_endianess_u32);
+impl_entry!(Entry64 with ElfFile::get_string and convert_endianess_u64);
+impl_entry!(DynEntry32 with ElfFile::get_dyn_string and convert_endianess_u32);
+impl_entry!(DynEntry64 with ElfFile::get_dyn_string and convert_endianess_u64);
 
 #[derive(Copy, Clone, Debug)]
 pub struct Visibility_(u8);

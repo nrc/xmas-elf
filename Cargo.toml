@@ -10,6 +10,10 @@ keywords = ["elf", "parser", "binary"]
 [dependencies]
 zero = "0.1"
 
+[dependencies.byteorder]
+version = "0.5"
+default-features = false
+
 [[bin]]
 name = "xmas_elf"
 doc = false
