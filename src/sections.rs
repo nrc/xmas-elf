@@ -67,7 +67,7 @@ pub const SHN_COMMON: u16 = 0xfff2;
 pub const SHN_XINDEX: u16 = 0xffff;
 pub const SHN_HIRESERVE: u16 = 0xffff;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum SectionHeader<'a> {
     Sh32(&'a SectionHeader_<P32>),
     Sh64(&'a SectionHeader_<P64>),

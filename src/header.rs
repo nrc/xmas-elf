@@ -54,7 +54,7 @@ impl<'a> fmt::Display for Header<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 #[repr(C)]
 pub struct HeaderPt1 {
     pub magic: [u8; 4],
@@ -118,6 +118,7 @@ impl<'a> fmt::Display for HeaderPt2<'a> {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct HeaderPt2_<P> {
     pub type_: Type_,
     pub machine: Machine,
@@ -156,7 +157,7 @@ impl<P: fmt::Display> fmt::Display for HeaderPt2_<P> {
 }
 
 
-#[derive(Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[repr(u8)]
 pub enum Class {
     None = 0,
@@ -174,7 +175,7 @@ impl Class {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[repr(u8)]
 pub enum Data {
     None = 0,
@@ -192,7 +193,7 @@ impl Data {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[repr(u8)]
 pub enum Version {
     None = 0,
@@ -209,7 +210,7 @@ impl Version {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[repr(u8)]
 pub enum OsAbi {
     // or None
@@ -225,7 +226,7 @@ pub enum OsAbi {
     OpenVMS = 0x0D, // FIXME there are many, many more of these
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Type_(pub u16);
 
 impl Type_ {
@@ -247,7 +248,7 @@ impl fmt::Debug for Type_ {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Type {
     None,
     Relocatable,
@@ -258,7 +259,7 @@ pub enum Type {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[repr(u16)]
 pub enum Machine {
     None = 0,
