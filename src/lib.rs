@@ -72,7 +72,12 @@ impl<'a> ElfFile<'a> {
     }
 
     pub fn get_string(&self, index: u32) -> Result<&'a str, &'static str> {
-        self.get_str_table().map(|str_table| read_str(&str_table[(index as usize)..]))
+        let section = try!(self.find_section_by_name(".strtab").ok_or(".strtab section not found"));
+        Ok(read_str(&section.raw_data(self)[(index as usize)..]))
+    }
+
+    pub fn get_section_name_string(&self, index: u32) -> Result<&'a str, &'static str> {
+        self.get_section_name_str_table().map(|str_table| read_str(&str_table[(index as usize)..]))
     }
 
     pub fn get_dyn_string(&self, index: u32) -> Result<&'a str, &'static str> {
@@ -94,7 +99,7 @@ impl<'a> ElfFile<'a> {
         None
     }
 
-    fn get_str_table(&self) -> Result<&'a [u8], &'static str> {
+    fn get_section_name_str_table(&self) -> Result<&'a [u8], &'static str> {
         // TODO cache this?
         let header = self.section_header(try!(self.header.pt2.ok_as_ref()).sh_str_index());
         header.map(|h| &self.input[(h.offset() as usize)..])

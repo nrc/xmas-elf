@@ -112,7 +112,7 @@ impl SectionHeader {
     pub fn get_name<'a>(&self, elf_file: &ElfFile<'a>) -> Result<&'a str, &'static str> {
         self.get_type().and_then(|typ| match typ {
             ShType::Null => Err("Attempt to get name of null section"),
-            _ => elf_file.get_string(self.name()),
+            _ => elf_file.get_section_name_string(self.name()),
         })
     }
 
