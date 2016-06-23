@@ -8,27 +8,50 @@ use zero::{read, read_array, read_str, read_strs_to_null, StrReaderIterator, Pod
 use symbol_table;
 use dynamic::Dynamic;
 use hash::HashTable;
+use util::{ResultExt, convert_endianess_u32, convert_endianess_u64};
 
-pub fn parse_section_header<'a>(input: &'a [u8],
-                                header: Header<'a>,
+pub fn parse_section_header(input: &[u8],
+                                header: &Header,
                                 index: u16)
-                                -> Result<SectionHeader<'a>, &'static str> {
+                                -> Result<SectionHeader, &'static str> {
     // Trying to get index 0 (SHN_UNDEF) is also probably an error, but it is a legitimate section.
     assert!(index < SHN_LORESERVE,
             "Attempt to get section for a reserved index");
 
-    header.pt2.map(|pt2| {
+    header.pt2.ok_as_ref().map(|pt2| {
         let start = (index as u64 * pt2.sh_entry_size() as u64 + pt2.sh_offset() as u64) as usize;
         let end = start + pt2.sh_entry_size() as usize;
 
         match header.pt1.class {
             Class::ThirtyTwo => {
-                let header: &'a SectionHeader_<P32> = read(&input[start..end]);
-                SectionHeader::Sh32(header)
+                let sheader_ref: &SectionHeader_<P32> = read(&input[start..end]);
+                let mut sheader = sheader_ref.clone();
+                convert_endianess_u32(header.pt1.data, &mut sheader.name);
+                convert_endianess_u32(header.pt1.data, &mut sheader.type_.0);
+                convert_endianess_u32(header.pt1.data, &mut sheader.flags);
+                convert_endianess_u32(header.pt1.data, &mut sheader.address);
+                convert_endianess_u32(header.pt1.data, &mut sheader.offset);
+                convert_endianess_u32(header.pt1.data, &mut sheader.size);
+                convert_endianess_u32(header.pt1.data, &mut sheader.link);
+                convert_endianess_u32(header.pt1.data, &mut sheader.info);
+                convert_endianess_u32(header.pt1.data, &mut sheader.align);
+                convert_endianess_u32(header.pt1.data, &mut sheader.entry_size);
+                SectionHeader::Sh32(sheader)
             }
             Class::SixtyFour => {
-                let header: &'a SectionHeader_<P64> = read(&input[start..end]);
-                SectionHeader::Sh64(header)
+                let sheader_ref: &SectionHeader_<P64> = read(&input[start..end]);
+                let mut sheader = sheader_ref.clone();
+                convert_endianess_u32(header.pt1.data, &mut sheader.name);
+                convert_endianess_u32(header.pt1.data, &mut sheader.type_.0);
+                convert_endianess_u64(header.pt1.data, &mut sheader.flags);
+                convert_endianess_u64(header.pt1.data, &mut sheader.address);
+                convert_endianess_u64(header.pt1.data, &mut sheader.offset);
+                convert_endianess_u64(header.pt1.data, &mut sheader.size);
+                convert_endianess_u32(header.pt1.data, &mut sheader.link);
+                convert_endianess_u32(header.pt1.data, &mut sheader.info);
+                convert_endianess_u64(header.pt1.data, &mut sheader.align);
+                convert_endianess_u64(header.pt1.data, &mut sheader.entry_size);
+                SectionHeader::Sh64(sheader)
             }
             Class::None => unreachable!(),
         }
@@ -41,10 +64,10 @@ pub struct SectionIter<'b, 'a: 'b> {
 }
 
 impl<'b, 'a> Iterator for SectionIter<'b, 'a> {
-    type Item = SectionHeader<'a>;
+    type Item = SectionHeader;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let count = self.file.header.pt2.map(|pt2| pt2.sh_count()).unwrap_or(0);
+        let count = self.file.header.pt2.as_ref().map(|pt2| pt2.sh_count()).unwrap_or(0);
         if self.next_index >= count {
             return None;
         }
@@ -67,29 +90,29 @@ pub const SHN_COMMON: u16 = 0xfff2;
 pub const SHN_XINDEX: u16 = 0xffff;
 pub const SHN_HIRESERVE: u16 = 0xffff;
 
-#[derive(Clone, Copy)]
-pub enum SectionHeader<'a> {
-    Sh32(&'a SectionHeader_<P32>),
-    Sh64(&'a SectionHeader_<P64>),
+#[derive(Clone, Debug)]
+pub enum SectionHeader {
+    Sh32(SectionHeader_<P32>),
+    Sh64(SectionHeader_<P64>),
 }
 
 macro_rules! getter {
     ($name: ident, $typ: ident) => {
         pub fn $name(&self) -> $typ {
             match *self {
-                SectionHeader::Sh32(h) => h.$name as $typ,
-                SectionHeader::Sh64(h) => h.$name as $typ,
+                SectionHeader::Sh32(ref h) => h.$name as $typ,
+                SectionHeader::Sh64(ref h) => h.$name as $typ,
             }
         }
     }
 }
 
-impl<'a> SectionHeader<'a> {
+impl SectionHeader {
     // Note that this function is O(n) in the length of the name.
-    pub fn get_name(&self, elf_file: &ElfFile<'a>) -> Result<&'a str, &'static str> {
+    pub fn get_name<'a>(&self, elf_file: &ElfFile<'a>) -> Result<&'a str, &'static str> {
         self.get_type().and_then(|typ| match typ {
             ShType::Null => Err("Attempt to get name of null section"),
-            _ => elf_file.get_string(self.name()),
+            _ => elf_file.get_section_name_string(self.name()),
         })
     }
 
@@ -97,7 +120,7 @@ impl<'a> SectionHeader<'a> {
         self.type_().as_sh_type()
     }
 
-    pub fn get_data(&self, elf_file: &ElfFile<'a>) -> Result<SectionData<'a>, &'static str> {
+    pub fn get_data<'a>(&self, elf_file: &ElfFile<'a>) -> Result<SectionData<'a>, &'static str> {
         macro_rules! array_data {
             ($data32: ident, $data64: ident) => {{
                 let data = self.raw_data(elf_file);
@@ -158,7 +181,7 @@ impl<'a> SectionHeader<'a> {
         })
     }
 
-    pub fn raw_data(&self, elf_file: &ElfFile<'a>) -> &'a [u8] {
+    pub fn raw_data<'a>(&self, elf_file: &ElfFile<'a>) -> &'a [u8] {
         assert!(self.get_type().unwrap() != ShType::Null);
         &elf_file.input[self.offset() as usize..(self.offset() + self.size()) as usize]
     }
@@ -170,7 +193,7 @@ impl<'a> SectionHeader<'a> {
     getter!(type_, ShType_);
 }
 
-impl<'a> fmt::Display for SectionHeader<'a> {
+impl fmt::Display for SectionHeader {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         macro_rules! sh_display {
             ($sh: ident) => {{
@@ -189,13 +212,13 @@ impl<'a> fmt::Display for SectionHeader<'a> {
         }
 
         match *self {
-            SectionHeader::Sh32(sh) => sh_display!(sh),
-            SectionHeader::Sh64(sh) => sh_display!(sh),
+            SectionHeader::Sh32(ref sh) => sh_display!(sh),
+            SectionHeader::Sh64(ref sh) => sh_display!(sh),
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 #[repr(C)]
 pub struct SectionHeader_<P> {
     name: u32,
@@ -499,7 +522,7 @@ impl NoteHeader {
     }
 }
 
-pub fn sanity_check<'a>(header: SectionHeader<'a>, file: &ElfFile<'a>) -> Result<(), &'static str> {
+pub fn sanity_check<'a>(header: SectionHeader, file: &ElfFile<'a>) -> Result<(), &'static str> {
     if try!(header.get_type()) == ShType::Null {
         return Ok(());
     }

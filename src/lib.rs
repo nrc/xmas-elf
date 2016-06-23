@@ -15,7 +15,9 @@ macro_rules! check {
 }
 
 extern crate zero;
+extern crate byteorder;
 
+mod util;
 pub mod header;
 pub mod sections;
 pub mod program;
@@ -28,13 +30,14 @@ use sections::{SectionHeader, SectionIter};
 use program::{ProgramHeader, ProgramIter};
 use zero::read_str;
 use symbol_table::Entry;
+use util::ResultExt;
 
 pub type P32 = u32;
 pub type P64 = u64;
 
 pub struct ElfFile<'a> {
     pub input: &'a [u8],
-    pub header: Header<'a>,
+    pub header: Header,
 }
 
 impl<'a> ElfFile<'a> {
@@ -46,8 +49,8 @@ impl<'a> ElfFile<'a> {
         }
     }
 
-    pub fn section_header(&self, index: u16) -> Result<SectionHeader<'a>, &'static str> {
-        sections::parse_section_header(self.input, self.header, index)
+    pub fn section_header(&self, index: u16) -> Result<SectionHeader, &'static str> {
+        sections::parse_section_header(self.input, &self.header, index)
     }
 
     pub fn section_iter<'b>(&'b self) -> SectionIter<'b, 'a> {
@@ -57,8 +60,8 @@ impl<'a> ElfFile<'a> {
         }
     }
 
-    pub fn program_header(&self, index: u16) -> Result<ProgramHeader<'a>, &'static str> {
-        program::parse_program_header(self.input, self.header, index)
+    pub fn program_header(&self, index: u16) -> Result<ProgramHeader, &'static str> {
+        program::parse_program_header(self.input, &self.header, index)
     }
 
     pub fn program_iter<'b>(&'b self) -> ProgramIter<'b, 'a> {
@@ -69,7 +72,12 @@ impl<'a> ElfFile<'a> {
     }
 
     pub fn get_string(&self, index: u32) -> Result<&'a str, &'static str> {
-        self.get_str_table().map(|str_table| read_str(&str_table[(index as usize)..]))
+        let section = try!(self.find_section_by_name(".strtab").ok_or(".strtab section not found"));
+        Ok(read_str(&section.raw_data(self)[(index as usize)..]))
+    }
+
+    pub fn get_section_name_string(&self, index: u32) -> Result<&'a str, &'static str> {
+        self.get_section_name_str_table().map(|str_table| read_str(&str_table[(index as usize)..]))
     }
 
     pub fn get_dyn_string(&self, index: u32) -> Result<&'a str, &'static str> {
@@ -79,7 +87,7 @@ impl<'a> ElfFile<'a> {
 
     // This is really, stupidly slow. Not sure how to fix that, perhaps keeping
     // a HashTable mapping names to section header indices?
-    pub fn find_section_by_name(&self, name: &str) -> Option<SectionHeader<'a>> {
+    pub fn find_section_by_name(&self, name: &str) -> Option<SectionHeader> {
         for sect in self.section_iter() {
             if let Ok(sect_name) = sect.get_name(&self) {
                 if sect_name == name {
@@ -91,9 +99,9 @@ impl<'a> ElfFile<'a> {
         None
     }
 
-    fn get_str_table(&self) -> Result<&'a [u8], &'static str> {
+    fn get_section_name_str_table(&self) -> Result<&'a [u8], &'static str> {
         // TODO cache this?
-        let header = self.section_header(try!(self.header.pt2).sh_str_index());
+        let header = self.section_header(try!(self.header.pt2.ok_as_ref()).sh_str_index());
         header.map(|h| &self.input[(h.offset() as usize)..])
     }
 }

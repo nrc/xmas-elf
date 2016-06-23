@@ -3,23 +3,50 @@ use core::mem;
 
 use {P32, P64, ElfFile};
 use zero::{read, Pod};
+use util::{convert_endianess_u16, convert_endianess_u32, convert_endianess_u64};
 
-
-pub fn parse_header<'a>(input: &'a [u8]) -> Header<'a> {
+pub fn parse_header(input: &[u8]) -> Header {
     let size_pt1 = mem::size_of::<HeaderPt1>();
-    let header_1: &'a HeaderPt1 = read(&input[..size_pt1]);
+    let header_1_ref: &HeaderPt1 = read(&input[..size_pt1]);
+    let header_1 = header_1_ref.clone();
     assert!(header_1.magic == MAGIC);
 
     let header_2 = match header_1.class {
         Class::None => Err("Invalid ELF class"),
         Class::ThirtyTwo => {
-            let header_2: &'a HeaderPt2_<P32> =
+            let header_2_ref: &HeaderPt2_<P32> =
                 read(&input[size_pt1..size_pt1 + mem::size_of::<HeaderPt2_<P32>>()]);
+            let mut header_2 = header_2_ref.clone();
+            convert_endianess_u16(header_1.data, unsafe { mem::transmute(&mut header_2.type_) });
+            convert_endianess_u16(header_1.data, unsafe { mem::transmute(&mut header_2.machine) });
+            convert_endianess_u32(header_1.data, &mut header_2.version);
+            convert_endianess_u16(header_1.data, &mut header_2.header_size);
+            convert_endianess_u32(header_1.data, &mut header_2.entry_point);
+            convert_endianess_u32(header_1.data, &mut header_2.ph_offset);
+            convert_endianess_u32(header_1.data, &mut header_2.sh_offset);
+            convert_endianess_u16(header_1.data, &mut header_2.ph_entry_size);
+            convert_endianess_u16(header_1.data, &mut header_2.ph_count);
+            convert_endianess_u16(header_1.data, &mut header_2.sh_entry_size);
+            convert_endianess_u16(header_1.data, &mut header_2.sh_count);
+            convert_endianess_u16(header_1.data, &mut header_2.sh_str_index);
             Ok(HeaderPt2::Header32(header_2))
         }
         Class::SixtyFour => {
-            let header_2: &'a HeaderPt2_<P64> =
+            let header_2_ref: &HeaderPt2_<P64> =
                 read(&input[size_pt1..size_pt1 + mem::size_of::<HeaderPt2_<P64>>()]);
+            let mut header_2 = header_2_ref.clone();
+            convert_endianess_u16(header_1.data, unsafe { mem::transmute(&mut header_2.type_) });
+            convert_endianess_u16(header_1.data, unsafe { mem::transmute(&mut header_2.machine) });
+            convert_endianess_u32(header_1.data, &mut header_2.version);
+            convert_endianess_u16(header_1.data, &mut header_2.header_size);
+            convert_endianess_u64(header_1.data, &mut header_2.entry_point);
+            convert_endianess_u64(header_1.data, &mut header_2.ph_offset);
+            convert_endianess_u64(header_1.data, &mut header_2.sh_offset);
+            convert_endianess_u16(header_1.data, &mut header_2.ph_entry_size);
+            convert_endianess_u16(header_1.data, &mut header_2.ph_count);
+            convert_endianess_u16(header_1.data, &mut header_2.sh_entry_size);
+            convert_endianess_u16(header_1.data, &mut header_2.sh_count);
+            convert_endianess_u16(header_1.data, &mut header_2.sh_str_index);
             Ok(HeaderPt2::Header64(header_2))
         }
     };
@@ -31,15 +58,15 @@ pub fn parse_header<'a>(input: &'a [u8]) -> Header<'a> {
 
 pub const MAGIC: [u8; 4] = [0x7f, 'E' as u8, 'L' as u8, 'F' as u8];
 
-#[derive(Clone, Copy)]
-pub struct Header<'a> {
-    pub pt1: &'a HeaderPt1,
-    pub pt2: Result<HeaderPt2<'a>, &'static str>,
+#[derive(Clone)]
+pub struct Header {
+    pub pt1: HeaderPt1,
+    pub pt2: Result<HeaderPt2, &'static str>,
 }
 
 // TODO add Header::section_count, because if sh_count = 0, then the real count is in the first section.
 
-impl<'a> fmt::Display for Header<'a> {
+impl fmt::Display for Header {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(writeln!(f, "ELF header:"));
         try!(writeln!(f, "    magic:            {:?}", self.pt1.magic));
@@ -49,12 +76,12 @@ impl<'a> fmt::Display for Header<'a> {
         try!(writeln!(f, "    os abi:           {:?}", self.pt1.os_abi));
         try!(writeln!(f, "    abi version:      {:?}", self.pt1.abi_version));
         try!(writeln!(f, "    padding:          {:?}", self.pt1.padding));
-        try!(self.pt2.ok().map_or(Ok(()), |pt2| write!(f, "{}", pt2)));
+        try!(self.pt2.as_ref().ok().map_or(Ok(()), |pt2| write!(f, "{}", pt2)));
         Ok(())
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 #[repr(C)]
 pub struct HeaderPt1 {
     pub magic: [u8; 4],
@@ -69,24 +96,24 @@ pub struct HeaderPt1 {
 
 unsafe impl Pod for HeaderPt1 {}
 
-#[derive(Clone, Copy)]
-pub enum HeaderPt2<'a> {
-    Header32(&'a HeaderPt2_<P32>),
-    Header64(&'a HeaderPt2_<P64>),
+#[derive(Clone, Debug)]
+pub enum HeaderPt2 {
+    Header32(HeaderPt2_<P32>),
+    Header64(HeaderPt2_<P64>),
 }
 
 macro_rules! getter {
     ($name: ident, $typ: ident) => {
         pub fn $name(&self) -> $typ {
             match *self {
-                HeaderPt2::Header32(h) => h.$name as $typ,
-                HeaderPt2::Header64(h) => h.$name as $typ,
+                HeaderPt2::Header32(ref h) => h.$name as $typ,
+                HeaderPt2::Header64(ref h) => h.$name as $typ,
             }
         }
     }
 }
 
-impl<'a> HeaderPt2<'a> {
+impl HeaderPt2 {
     pub fn size(&self) -> usize {
         match *self {
             HeaderPt2::Header32(_) => mem::size_of::<HeaderPt2_<P32>>(),
@@ -109,15 +136,16 @@ impl<'a> HeaderPt2<'a> {
     getter!(sh_str_index, u16);
 }
 
-impl<'a> fmt::Display for HeaderPt2<'a> {
+impl fmt::Display for HeaderPt2 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            HeaderPt2::Header32(h) => write!(f, "{}", h),
-            HeaderPt2::Header64(h) => write!(f, "{}", h),
+            HeaderPt2::Header32(ref h) => write!(f, "{}", h),
+            HeaderPt2::Header64(ref h) => write!(f, "{}", h),
         }
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct HeaderPt2_<P> {
     pub type_: Type_,
     pub machine: Machine,
@@ -156,7 +184,7 @@ impl<P: fmt::Display> fmt::Display for HeaderPt2_<P> {
 }
 
 
-#[derive(Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[repr(u8)]
 pub enum Class {
     None = 0,
@@ -174,7 +202,7 @@ impl Class {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[repr(u8)]
 pub enum Data {
     None = 0,
@@ -192,7 +220,7 @@ impl Data {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[repr(u8)]
 pub enum Version {
     None = 0,
@@ -209,7 +237,7 @@ impl Version {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[repr(u8)]
 pub enum OsAbi {
     // or None
@@ -225,7 +253,7 @@ pub enum OsAbi {
     OpenVMS = 0x0D, // FIXME there are many, many more of these
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Type_(pub u16);
 
 impl Type_ {
@@ -247,7 +275,7 @@ impl fmt::Debug for Type_ {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Type {
     None,
     Relocatable,
@@ -258,7 +286,7 @@ pub enum Type {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[repr(u16)]
 pub enum Machine {
     None = 0,
@@ -278,7 +306,11 @@ pub enum Machine {
 pub fn sanity_check(file: &ElfFile) -> Result<(), &'static str> {
     check!(mem::size_of::<HeaderPt1>() == 16);
     check!(file.header.pt1.magic == MAGIC, "bad magic number");
-    let pt2 = try!(file.header.pt2);
+    let pt2 = match file.header.pt2 {
+        Ok(ref h) => h,
+        Err(err) => return Err(err)
+    };
+
     check!(mem::size_of::<HeaderPt1>() + pt2.size() == pt2.header_size() as usize,
            "header_size does not match size of header");
     match (&file.header.pt1.class, &file.header.pt2) {
