@@ -17,7 +17,7 @@ pub fn parse_program_header<'a>(input: &'a [u8],
     let start = pt2.ph_offset() as usize + index as usize * pt2.ph_entry_size() as usize;
     let end = start + pt2.ph_entry_size() as usize;
 
-    match header.pt1.class {
+    match header.pt1.class() {
         Class::ThirtyTwo => {
             let header: &'a ProgramHeader32 = read(&input[start..end]);
             Ok(ProgramHeader::Ph32(header))
@@ -26,7 +26,7 @@ pub fn parse_program_header<'a>(input: &'a [u8],
             let header: &'a ProgramHeader64 = read(&input[start..end]);
             Ok(ProgramHeader::Ph64(header))
         }
-        Class::None => unreachable!(),
+        Class::None | Class::Other(_) => unreachable!(),
     }
 }
 
@@ -145,22 +145,22 @@ macro_rules! ph_impl {
                     }
                     Type::Dynamic => {
                         let data = self.raw_data(elf_file);
-                        match elf_file.header.pt1.class {
+                        match elf_file.header.pt1.class() {
                             Class::ThirtyTwo => SegmentData::Dynamic32(read_array(data)),
                             Class::SixtyFour => SegmentData::Dynamic64(read_array(data)),
-                            Class::None => unreachable!(),
+                            Class::None | Class::Other(_) => unreachable!(),
                         }
                     }
                     Type::Note => {
                         let data = self.raw_data(elf_file);
-                        match elf_file.header.pt1.class {
+                        match elf_file.header.pt1.class() {
                             Class::ThirtyTwo => unimplemented!(),
                             Class::SixtyFour => {
                                 let header: &'a NoteHeader = read(&data[0..12]);
                                 let index = &data[12..];
                                 SegmentData::Note64(header, index)
                             }
-                            Class::None => unreachable!(),
+                            Class::None | Class::Other(_) => unreachable!(),
                         }
                     }
                 })
