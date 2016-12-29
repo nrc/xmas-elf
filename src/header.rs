@@ -118,6 +118,8 @@ impl<'a> fmt::Display for HeaderPt2<'a> {
     }
 }
 
+#[derive(Debug)]
+#[repr(C)]
 pub struct HeaderPt2_<P> {
     pub type_: Type_,
     pub machine: Machine,
