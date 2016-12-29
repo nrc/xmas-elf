@@ -2,6 +2,7 @@ use core::fmt;
 use {P32, P64};
 use zero::Pod;
 
+#[repr(C)]
 pub struct Dynamic<P> {
     tag: Tag_<P>,
     un: P,

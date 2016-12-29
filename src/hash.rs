@@ -1,6 +1,8 @@
 use symbol_table::Entry;
 use zero::Pod;
 
+#[derive(Debug)]
+#[repr(C)]
 pub struct HashTable {
     bucket_count: u32,
     chain_count: u32,

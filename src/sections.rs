@@ -405,6 +405,7 @@ pub const GRP_MASKOS: u64 = 0x0ff00000;
 pub const GRP_MASKPROC: u64 = 0xf0000000;
 
 #[derive(Debug)]
+#[repr(C)]
 pub struct Rela<P> {
     offset: P,
     info: P,
@@ -412,6 +413,7 @@ pub struct Rela<P> {
 }
 
 #[derive(Debug)]
+#[repr(C)]
 pub struct Rel<P> {
     offset: P,
     info: P,
