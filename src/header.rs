@@ -10,8 +10,8 @@ pub fn parse_header<'a>(input: &'a [u8]) -> Header<'a> {
     let header_1: &'a HeaderPt1 = read(&input[..size_pt1]);
     assert!(header_1.magic == MAGIC);
 
-    let header_2 = match header_1.class {
-        Class::None => Err("Invalid ELF class"),
+    let header_2 = match header_1.class() {
+        Class::None | Class::Other(_) => Err("Invalid ELF class"),
         Class::ThirtyTwo => {
             let header_2: &'a HeaderPt2_<P32> =
                 read(&input[size_pt1..size_pt1 + mem::size_of::<HeaderPt2_<P32>>()]);
@@ -58,16 +58,34 @@ impl<'a> fmt::Display for Header<'a> {
 #[repr(C)]
 pub struct HeaderPt1 {
     pub magic: [u8; 4],
-    pub class: Class,
-    pub data: Data,
-    pub version: Version,
-    pub os_abi: OsAbi,
+    pub class: Class_,
+    pub data: Data_,
+    pub version: Version_,
+    pub os_abi: OsAbi_,
     // Often also just padding.
     pub abi_version: u8,
     pub padding: [u8; 7],
 }
 
 unsafe impl Pod for HeaderPt1 {}
+
+impl HeaderPt1 {
+    pub fn class(&self) -> Class {
+        self.class.as_class()
+    }
+
+    pub fn data(&self) -> Data {
+        self.data.as_data()
+    }
+
+    pub fn version(&self) -> Version {
+        self.version.as_version()
+    }
+
+    pub fn os_abi(&self) -> OsAbi {
+        self.os_abi.as_os_abi()
+    }
+}
 
 #[derive(Clone, Copy)]
 pub enum HeaderPt2<'a> {
@@ -96,7 +114,7 @@ impl<'a> HeaderPt2<'a> {
 
     // TODO move to impl Header
     getter!(type_, Type_);
-    getter!(machine, Machine);
+    getter!(machine, Machine_);
     getter!(version, u32);
     getter!(header_size, u16);
     getter!(entry_point, u64);
@@ -122,7 +140,7 @@ impl<'a> fmt::Display for HeaderPt2<'a> {
 #[repr(C)]
 pub struct HeaderPt2_<P> {
     pub type_: Type_,
-    pub machine: Machine,
+    pub machine: Machine_,
     pub version: u32,
     pub entry_point: P,
     pub ph_offset: P,
@@ -157,13 +175,36 @@ impl<P: fmt::Display> fmt::Display for HeaderPt2_<P> {
     }
 }
 
+#[derive(Clone, Copy)]
+pub struct Class_(u8);
+
+impl Class_ {
+    pub fn as_class(self) -> Class {
+        match self.0 {
+            0 => Class::None,
+            1 => Class::ThirtyTwo,
+            2 => Class::SixtyFour,
+            other => Class::Other(other),
+        }
+    }
+
+    pub fn is_none(self) -> bool {
+        self.0 == 0
+    }
+}
+
+impl fmt::Debug for Class_ {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.as_class().fmt(f)
+    }
+}
 
 #[derive(Debug)]
-#[repr(u8)]
 pub enum Class {
-    None = 0,
-    ThirtyTwo = 1,
-    SixtyFour = 2,
+    None,
+    ThirtyTwo,
+    SixtyFour,
+    Other(u8),
 }
 
 impl Class {
@@ -176,12 +217,36 @@ impl Class {
     }
 }
 
+#[derive(Clone, Copy)]
+pub struct Data_(u8);
+
+impl Data_ {
+    pub fn as_data(self) -> Data {
+        match self.0 {
+            0 => Data::None,
+            1 => Data::LittleEndian,
+            2 => Data::BigEndian,
+            other => Data::Other(other),
+        }
+    }
+
+    pub fn is_none(self) -> bool {
+        self.0 == 0
+    }
+}
+
+impl fmt::Debug for Data_ {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.as_data().fmt(f)
+    }
+}
+
 #[derive(Debug)]
-#[repr(u8)]
 pub enum Data {
-    None = 0,
-    LittleEndian = 1,
-    BigEndian = 2,
+    None,
+    LittleEndian,
+    BigEndian,
+    Other(u8),
 }
 
 impl Data {
@@ -194,11 +259,34 @@ impl Data {
     }
 }
 
+#[derive(Clone, Copy)]
+pub struct Version_(u8);
+
+impl Version_ {
+    pub fn as_version(self) -> Version {
+        match self.0 {
+            0 => Version::None,
+            1 => Version::Current,
+            other => Version::Other(other),
+        }
+    }
+
+    pub fn is_none(self) -> bool {
+        self.0 == 0
+    }
+}
+
+impl fmt::Debug for Version_ {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.as_version().fmt(f)
+    }
+}
+
 #[derive(Debug)]
-#[repr(u8)]
 pub enum Version {
-    None = 0,
-    Current = 1,
+    None,
+    Current,
+    Other(u8),
 }
 
 impl Version {
@@ -211,20 +299,47 @@ impl Version {
     }
 }
 
+#[derive(Clone, Copy)]
+pub struct OsAbi_(u8);
+
+impl OsAbi_ {
+    pub fn as_os_abi(self) -> OsAbi {
+        match self.0 {
+            0x00 => OsAbi::SystemV,
+            0x01 => OsAbi::HpUx,
+            0x02 => OsAbi::NetBSD,
+            0x03 => OsAbi::Linux,
+            0x06 => OsAbi::Solaris,
+            0x07 => OsAbi::Aix,
+            0x08 => OsAbi::Irix,
+            0x09 => OsAbi::FreeBSD,
+            0x0C => OsAbi::OpenBSD,
+            0x0D => OsAbi::OpenVMS,
+            other => OsAbi::Other(other),
+        }
+    }
+}
+
+impl fmt::Debug for OsAbi_ {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.as_os_abi().fmt(f)
+    }
+}
+
 #[derive(Debug)]
-#[repr(u8)]
 pub enum OsAbi {
     // or None
-    SystemV = 0x00,
-    HpUx = 0x01,
-    NetBSD = 0x02,
-    Linux = 0x03,
-    Solaris = 0x06,
-    Aix = 0x07,
-    Irix = 0x08,
-    FreeBSD = 0x09,
-    OpenBSD = 0x0C,
-    OpenVMS = 0x0D, // FIXME there are many, many more of these
+    SystemV,
+    HpUx,
+    NetBSD,
+    Linux,
+    Solaris,
+    Aix,
+    Irix,
+    FreeBSD,
+    OpenBSD,
+    OpenVMS,
+    Other(u8), // FIXME there are many, many more of these
 }
 
 #[derive(Clone, Copy)]
@@ -259,20 +374,47 @@ pub enum Type {
     ProcessorSpecific(u16), // TODO OsSpecific
 }
 
+#[derive(Clone, Copy)]
+pub struct Machine_(u16);
+
+impl Machine_ {
+    pub fn as_machine(self) -> Machine {
+        match self.0 {
+            0x00 => Machine::None,
+            0x02 => Machine::Sparc,
+            0x03 => Machine::X86,
+            0x08 => Machine::Mips,
+            0x14 => Machine::PowerPC,
+            0x28 => Machine::Arm,
+            0x2A => Machine::SuperH,
+            0x32 => Machine::Ia64,
+            0x3E => Machine::X86_64,
+            0xB7 => Machine::AArch64,
+            other => Machine::Other(other),
+        }
+    }
+}
+
+impl fmt::Debug for Machine_ {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.as_machine().fmt(f)
+    }
+}
+
 #[allow(non_camel_case_types)]
 #[derive(Debug, Clone, Copy)]
-#[repr(u16)]
 pub enum Machine {
-    None = 0,
-    Sparc = 0x02,
-    X86 = 0x03,
-    Mips = 0x08,
-    PowerPC = 0x14,
-    Arm = 0x28,
-    SuperH = 0x2A,
-    Ia64 = 0x32,
-    X86_64 = 0x3E,
-    AArch64 = 0xB7, // FIXME there are many, many more of these
+    None,
+    Sparc,
+    X86,
+    Mips,
+    PowerPC,
+    Arm,
+    SuperH,
+    Ia64,
+    X86_64,
+    AArch64,
+    Other(u16), // FIXME there are many, many more of these
 }
 
 // TODO any more constants that need to go in here?
@@ -283,7 +425,7 @@ pub fn sanity_check(file: &ElfFile) -> Result<(), &'static str> {
     let pt2 = try!(file.header.pt2);
     check!(mem::size_of::<HeaderPt1>() + pt2.size() == pt2.header_size() as usize,
            "header_size does not match size of header");
-    match (&file.header.pt1.class, &file.header.pt2) {
+    match (&file.header.pt1.class(), &file.header.pt2) {
         (&Class::None, _) => return Err("No class"),
         (&Class::ThirtyTwo, &Ok(HeaderPt2::Header32(_))) |
         (&Class::SixtyFour, &Ok(HeaderPt2::Header64(_))) => {}

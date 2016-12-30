@@ -21,7 +21,7 @@ pub fn parse_section_header<'a>(input: &'a [u8],
         let start = (index as u64 * pt2.sh_entry_size() as u64 + pt2.sh_offset() as u64) as usize;
         let end = start + pt2.sh_entry_size() as usize;
 
-        match header.pt1.class {
+        match header.pt1.class() {
             Class::ThirtyTwo => {
                 let header: &'a SectionHeader_<P32> = read(&input[start..end]);
                 SectionHeader::Sh32(header)
@@ -30,7 +30,7 @@ pub fn parse_section_header<'a>(input: &'a [u8],
                 let header: &'a SectionHeader_<P64> = read(&input[start..end]);
                 SectionHeader::Sh64(header)
             }
-            Class::None => unreachable!(),
+            Class::None | Class::Other(_) => unreachable!(),
         }
     })
 }
@@ -101,10 +101,10 @@ impl<'a> SectionHeader<'a> {
         macro_rules! array_data {
             ($data32: ident, $data64: ident) => {{
                 let data = self.raw_data(elf_file);
-                match elf_file.header.pt1.class {
+                match elf_file.header.pt1.class() {
                     Class::ThirtyTwo => SectionData::$data32(read_array(data)),
                     Class::SixtyFour => SectionData::$data64(read_array(data)),
-                    Class::None => unreachable!(),
+                    Class::None | Class::Other(_) => unreachable!(),
                 }
             }}
         }
@@ -141,14 +141,14 @@ impl<'a> SectionHeader<'a> {
             }
             ShType::Note => {
                 let data = self.raw_data(elf_file);
-                match elf_file.header.pt1.class {
+                match elf_file.header.pt1.class() {
                     Class::ThirtyTwo => unimplemented!(),
                     Class::SixtyFour => {
                         let header: &'a NoteHeader = read(&data[0..12]);
                         let index = &data[12..];
                         SectionData::Note64(header, index)
                     }
-                    Class::None => unreachable!(),
+                    Class::None | Class::Other(_) => unreachable!(),
                 }
             }
             ShType::Hash => {

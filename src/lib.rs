@@ -109,7 +109,7 @@ mod test {
     use std::mem;
 
     use super::*;
-    use header::{Class, Data, HeaderPt1, HeaderPt2_, Version};
+    use header::{HeaderPt1, HeaderPt2_};
 
     fn mk_elf_header(class: u8) -> Vec<u8> {
         let header_size = mem::size_of::<HeaderPt1>() +
@@ -119,16 +119,18 @@ mod test {
             _ => 0,
         };
         let mut header = vec![0x7f, 'E' as u8, 'L' as u8, 'F' as u8];
-        header.extend_from_slice(&[class, Data::LittleEndian as u8, Version::Current as u8]);
+        let data = 1u8;
+        let version = 1u8;
+        header.extend_from_slice(&[class, data, version]);
         header.resize(header_size, 0);
         header
     }
 
     #[test]
     fn interpret_class() {
-        assert!(ElfFile::new(&mk_elf_header(Class::None as u8)).header.pt2.is_err());
-        assert!(ElfFile::new(&mk_elf_header(Class::ThirtyTwo as u8)).header.pt2.is_ok());
-        assert!(ElfFile::new(&mk_elf_header(Class::SixtyFour as u8)).header.pt2.is_ok());
+        assert!(ElfFile::new(&mk_elf_header(0)).header.pt2.is_err());
+        assert!(ElfFile::new(&mk_elf_header(1)).header.pt2.is_ok());
+        assert!(ElfFile::new(&mk_elf_header(2)).header.pt2.is_ok());
         assert!(ElfFile::new(&mk_elf_header(42u8)).header.pt2.is_err());
     }
 }
