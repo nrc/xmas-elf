@@ -165,6 +165,7 @@ impl<'a> SectionHeader<'a> {
 
     getter!(flags, u64);
     getter!(name, u32);
+    getter!(address, u64);
     getter!(offset, u64);
     getter!(size, u64);
     getter!(type_, ShType_);
