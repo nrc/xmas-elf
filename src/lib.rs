@@ -68,8 +68,16 @@ impl<'a> ElfFile<'a> {
         }
     }
 
+    pub fn get_shstr(&self, index: u32) -> Result<&'a str, &'static str> {
+        self.get_shstr_table().map(|shstr_table| read_str(&shstr_table[(index as usize)..]))
+    }
+
     pub fn get_string(&self, index: u32) -> Result<&'a str, &'static str> {
-        self.get_str_table().map(|str_table| read_str(&str_table[(index as usize)..]))
+        let header = try!(self.find_section_by_name(".strtab").ok_or("no .strtab section"));
+        if try!(header.get_type()) != sections::ShType::StrTab {
+            return Err("expected .strtab to be StrTab");
+        }
+        Ok(read_str(&header.raw_data(self)[(index as usize)..]))
     }
 
     pub fn get_dyn_string(&self, index: u32) -> Result<&'a str, &'static str> {
@@ -91,7 +99,7 @@ impl<'a> ElfFile<'a> {
         None
     }
 
-    fn get_str_table(&self) -> Result<&'a [u8], &'static str> {
+    fn get_shstr_table(&self) -> Result<&'a [u8], &'static str> {
         // TODO cache this?
         let header = self.section_header(try!(self.header.pt2).sh_str_index());
         header.map(|h| &self.input[(h.offset() as usize)..])
