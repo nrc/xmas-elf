@@ -485,6 +485,10 @@ pub struct NoteHeader {
 unsafe impl Pod for NoteHeader {}
 
 impl NoteHeader {
+    pub fn type_(&self) -> u32 {
+        self.type_
+    }
+
     pub fn name<'a>(&'a self, input: &'a [u8]) -> &'a str {
         let result = read_str(input);
         // - 1 is due to null terminator

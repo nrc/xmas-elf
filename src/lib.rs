@@ -106,6 +106,38 @@ impl<'a> ElfFile<'a> {
     }
 }
 
+/// A trait for things that are common ELF conventions but not part of the ELF
+/// specification.
+pub trait Extensions<'a> {
+    /// Parse and return the value of the .note.gnu.build-id section, if it
+    /// exists and is well-formed.
+    fn get_gnu_buildid(&self) -> Option<&'a [u8]>;
+}
+
+impl<'a> Extensions<'a> for ElfFile<'a> {
+    fn get_gnu_buildid(&self) -> Option<&'a [u8]> {
+        self.find_section_by_name(".note.gnu.build-id")
+            .and_then(|header| header.get_data(self).ok())
+            .and_then(|data| match data {
+                // Handle Note32 if it's ever implemented!
+                sections::SectionData::Note64(header, data) => Some((header, data)),
+                _ => None,
+            })
+            .and_then(|(header, data)| {
+                // Check for NT_GNU_BUILD_ID
+                if header.type_() != 0x3 {
+                    return None;
+                }
+
+                if header.name(data) != "GNU" {
+                    return None;
+                }
+
+                Some(header.desc(data))
+            })
+    }
+}
+
 #[cfg(test)]
 #[macro_use]
 extern crate std;
