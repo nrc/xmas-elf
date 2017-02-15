@@ -26,7 +26,7 @@ pub mod hash;
 use header::Header;
 use sections::{SectionHeader, SectionIter};
 use program::{ProgramHeader, ProgramIter};
-use zero::read_str;
+use zero::{read, read_str};
 use symbol_table::Entry;
 
 pub type P32 = u32;
@@ -112,6 +112,10 @@ pub trait Extensions<'a> {
     /// Parse and return the value of the .note.gnu.build-id section, if it
     /// exists and is well-formed.
     fn get_gnu_buildid(&self) -> Option<&'a [u8]>;
+
+    /// Parse and return the value of the .gnu_debuglink section, if it
+    /// exists and is well-formed.
+    fn get_gnu_debuglink(&self) -> Option<(&'a str, u32)>;
 }
 
 impl<'a> Extensions<'a> for ElfFile<'a> {
@@ -134,6 +138,18 @@ impl<'a> Extensions<'a> for ElfFile<'a> {
                 }
 
                 Some(header.desc(data))
+            })
+    }
+
+    fn get_gnu_debuglink(&self) -> Option<(&'a str, u32)> {
+        self.find_section_by_name(".gnu_debuglink")
+            .map(|header| header.raw_data(self))
+            .and_then(|data| {
+                let file = read_str(data);
+                // Round up to the nearest multiple of 4.
+                let checksum_pos = ((file.len() + 4) / 4) * 4;
+                let checksum: u32 = *read(&data[checksum_pos..]);
+                Some((file, checksum))
             })
     }
 }
