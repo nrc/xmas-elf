@@ -26,7 +26,7 @@ pub mod hash;
 use header::Header;
 use sections::{SectionHeader, SectionIter};
 use program::{ProgramHeader, ProgramIter};
-use zero::read_str;
+use zero::{read, read_str};
 use symbol_table::Entry;
 
 pub type P32 = u32;
@@ -103,6 +103,54 @@ impl<'a> ElfFile<'a> {
         // TODO cache this?
         let header = self.section_header(try!(self.header.pt2).sh_str_index());
         header.map(|h| &self.input[(h.offset() as usize)..])
+    }
+}
+
+/// A trait for things that are common ELF conventions but not part of the ELF
+/// specification.
+pub trait Extensions<'a> {
+    /// Parse and return the value of the .note.gnu.build-id section, if it
+    /// exists and is well-formed.
+    fn get_gnu_buildid(&self) -> Option<&'a [u8]>;
+
+    /// Parse and return the value of the .gnu_debuglink section, if it
+    /// exists and is well-formed.
+    fn get_gnu_debuglink(&self) -> Option<(&'a str, u32)>;
+}
+
+impl<'a> Extensions<'a> for ElfFile<'a> {
+    fn get_gnu_buildid(&self) -> Option<&'a [u8]> {
+        self.find_section_by_name(".note.gnu.build-id")
+            .and_then(|header| header.get_data(self).ok())
+            .and_then(|data| match data {
+                // Handle Note32 if it's ever implemented!
+                sections::SectionData::Note64(header, data) => Some((header, data)),
+                _ => None,
+            })
+            .and_then(|(header, data)| {
+                // Check for NT_GNU_BUILD_ID
+                if header.type_() != 0x3 {
+                    return None;
+                }
+
+                if header.name(data) != "GNU" {
+                    return None;
+                }
+
+                Some(header.desc(data))
+            })
+    }
+
+    fn get_gnu_debuglink(&self) -> Option<(&'a str, u32)> {
+        self.find_section_by_name(".gnu_debuglink")
+            .map(|header| header.raw_data(self))
+            .and_then(|data| {
+                let file = read_str(data);
+                // Round up to the nearest multiple of 4.
+                let checksum_pos = ((file.len() + 4) / 4) * 4;
+                let checksum: u32 = *read(&data[checksum_pos..]);
+                Some((file, checksum))
+            })
     }
 }
 
