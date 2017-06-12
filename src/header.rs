@@ -5,28 +5,30 @@ use {P32, P64, ElfFile};
 use zero::{read, Pod};
 
 
-pub fn parse_header<'a>(input: &'a [u8]) -> Header<'a> {
+pub fn parse_header<'a>(input: &'a [u8]) -> Result<Header<'a>, &'static str> {
     let size_pt1 = mem::size_of::<HeaderPt1>();
     let header_1: &'a HeaderPt1 = read(&input[..size_pt1]);
-    assert!(header_1.magic == MAGIC);
+    if header_1.magic != MAGIC {
+        return Err("Did not find ELF magic number");
+    }
 
     let header_2 = match header_1.class() {
-        Class::None | Class::Other(_) => Err("Invalid ELF class"),
+        Class::None | Class::Other(_) => return Err("Invalid ELF class"),
         Class::ThirtyTwo => {
             let header_2: &'a HeaderPt2_<P32> =
                 read(&input[size_pt1..size_pt1 + mem::size_of::<HeaderPt2_<P32>>()]);
-            Ok(HeaderPt2::Header32(header_2))
+            HeaderPt2::Header32(header_2)
         }
         Class::SixtyFour => {
             let header_2: &'a HeaderPt2_<P64> =
                 read(&input[size_pt1..size_pt1 + mem::size_of::<HeaderPt2_<P64>>()]);
-            Ok(HeaderPt2::Header64(header_2))
+            HeaderPt2::Header64(header_2)
         }
     };
-    Header {
+    Ok(Header {
         pt1: header_1,
         pt2: header_2,
-    }
+    })
 }
 
 pub const MAGIC: [u8; 4] = [0x7f, 'E' as u8, 'L' as u8, 'F' as u8];
@@ -34,7 +36,7 @@ pub const MAGIC: [u8; 4] = [0x7f, 'E' as u8, 'L' as u8, 'F' as u8];
 #[derive(Clone, Copy)]
 pub struct Header<'a> {
     pub pt1: &'a HeaderPt1,
-    pub pt2: Result<HeaderPt2<'a>, &'static str>,
+    pub pt2: HeaderPt2<'a>,
 }
 
 // TODO add Header::section_count, because if sh_count = 0, then the real count is in the first section.
@@ -49,7 +51,7 @@ impl<'a> fmt::Display for Header<'a> {
         try!(writeln!(f, "    os abi:           {:?}", self.pt1.os_abi));
         try!(writeln!(f, "    abi version:      {:?}", self.pt1.abi_version));
         try!(writeln!(f, "    padding:          {:?}", self.pt1.padding));
-        try!(self.pt2.ok().map_or(Ok(()), |pt2| write!(f, "{}", pt2)));
+        try!(write!(f, "{}", self.pt2));
         Ok(())
     }
 }
@@ -209,11 +211,7 @@ pub enum Class {
 
 impl Class {
     pub fn is_none(&self) -> bool {
-        if let Class::None = *self {
-            true
-        } else {
-            false
-        }
+        if let Class::None = *self { true } else { false }
     }
 }
 
@@ -251,11 +249,7 @@ pub enum Data {
 
 impl Data {
     pub fn is_none(&self) -> bool {
-        if let Data::None = *self {
-            true
-        } else {
-            false
-        }
+        if let Data::None = *self { true } else { false }
     }
 }
 
@@ -422,13 +416,13 @@ pub enum Machine {
 pub fn sanity_check(file: &ElfFile) -> Result<(), &'static str> {
     check!(mem::size_of::<HeaderPt1>() == 16);
     check!(file.header.pt1.magic == MAGIC, "bad magic number");
-    let pt2 = try!(file.header.pt2);
+    let pt2 = &file.header.pt2;
     check!(mem::size_of::<HeaderPt1>() + pt2.size() == pt2.header_size() as usize,
            "header_size does not match size of header");
     match (&file.header.pt1.class(), &file.header.pt2) {
         (&Class::None, _) => return Err("No class"),
-        (&Class::ThirtyTwo, &Ok(HeaderPt2::Header32(_))) |
-        (&Class::SixtyFour, &Ok(HeaderPt2::Header64(_))) => {}
+        (&Class::ThirtyTwo, &HeaderPt2::Header32(_)) |
+        (&Class::SixtyFour, &HeaderPt2::Header64(_)) => {}
         _ => return Err("Mismatch between specified and actual class"),
     }
     check!(!file.header.pt1.version.is_none(), "no version");

@@ -17,21 +17,20 @@ pub fn parse_section_header<'a>(input: &'a [u8],
     assert!(index < SHN_LORESERVE,
             "Attempt to get section for a reserved index");
 
-    header.pt2.map(|pt2| {
-        let start = (index as u64 * pt2.sh_entry_size() as u64 + pt2.sh_offset() as u64) as usize;
-        let end = start + pt2.sh_entry_size() as usize;
+    let start = (index as u64 * header.pt2.sh_entry_size() as u64 +
+                 header.pt2.sh_offset() as u64) as usize;
+    let end = start + header.pt2.sh_entry_size() as usize;
 
-        match header.pt1.class() {
-            Class::ThirtyTwo => {
-                let header: &'a SectionHeader_<P32> = read(&input[start..end]);
-                SectionHeader::Sh32(header)
-            }
-            Class::SixtyFour => {
-                let header: &'a SectionHeader_<P64> = read(&input[start..end]);
-                SectionHeader::Sh64(header)
-            }
-            Class::None | Class::Other(_) => unreachable!(),
+    Ok(match header.pt1.class() {
+        Class::ThirtyTwo => {
+            let header: &'a SectionHeader_<P32> = read(&input[start..end]);
+            SectionHeader::Sh32(header)
         }
+        Class::SixtyFour => {
+            let header: &'a SectionHeader_<P64> = read(&input[start..end]);
+            SectionHeader::Sh64(header)
+        }
+        Class::None | Class::Other(_) => unreachable!(),
     })
 }
 
@@ -44,7 +43,7 @@ impl<'b, 'a> Iterator for SectionIter<'b, 'a> {
     type Item = SectionHeader<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let count = self.file.header.pt2.map(|pt2| pt2.sh_count()).unwrap_or(0);
+        let count = self.file.header.pt2.sh_count();
         if self.next_index >= count {
             return None;
         }
@@ -278,10 +277,7 @@ impl fmt::Debug for ShType_ {
 pub enum SectionData<'a> {
     Empty,
     Undefined(&'a [u8]),
-    Group {
-        flags: &'a u32,
-        indicies: &'a [u32],
-    },
+    Group { flags: &'a u32, indicies: &'a [u32] },
     StrArray(&'a [u8]),
     FnArray32(&'a [u32]),
     FnArray64(&'a [u64]),

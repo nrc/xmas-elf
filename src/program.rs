@@ -12,7 +12,7 @@ pub fn parse_program_header<'a>(input: &'a [u8],
                                 header: Header<'a>,
                                 index: u16)
                                 -> Result<ProgramHeader<'a>, &'static str> {
-    let pt2 = try!(header.pt2);
+    let pt2 = &header.pt2;
     assert!(index < pt2.ph_count() && pt2.ph_offset() > 0 && pt2.ph_entry_size() > 0);
     let start = pt2.ph_offset() as usize + index as usize * pt2.ph_entry_size() as usize;
     let end = start + pt2.ph_entry_size() as usize;
@@ -39,7 +39,7 @@ impl<'b, 'a> Iterator for ProgramIter<'b, 'a> {
     type Item = ProgramHeader<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let count = self.file.header.pt2.map(|pt2| pt2.ph_count()).unwrap_or(0);
+        let count = self.file.header.pt2.ph_count();
         if self.next_index >= count {
             return None;
         }
@@ -258,7 +258,7 @@ pub fn sanity_check<'a>(ph: ProgramHeader<'a>, elf_file: &ElfFile<'a>) -> Result
     let header = elf_file.header;
     match ph {
         ProgramHeader::Ph32(ph) => {
-            check!(mem::size_of_val(ph) == try!(header.pt2).ph_entry_size() as usize,
+            check!(mem::size_of_val(ph) == header.pt2.ph_entry_size() as usize,
                    "program header size mismatch");
             check!(((ph.offset + ph.file_size) as usize) < elf_file.input.len(),
                    "entry point out of range");
@@ -269,7 +269,7 @@ pub fn sanity_check<'a>(ph: ProgramHeader<'a>, elf_file: &ElfFile<'a>) -> Result
             }
         }
         ProgramHeader::Ph64(ph) => {
-            check!(mem::size_of_val(ph) == try!(header.pt2).ph_entry_size() as usize,
+            check!(mem::size_of_val(ph) == header.pt2.ph_entry_size() as usize,
                    "program header size mismatch");
             check!(((ph.offset + ph.file_size) as usize) < elf_file.input.len(),
                    "entry point out of range");

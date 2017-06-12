@@ -86,7 +86,7 @@ pub trait Entry {
                 if let Some(header) = header {
                     assert!(try!(header.get_type()) == sections::ShType::SymTabShIndex);
                     if let sections::SectionData::SymTabShIndex(data) =
-                           try!(header.get_data(elf_file)) {
+                        try!(header.get_data(elf_file)) {
                         // TODO cope with u32 section indices (count is in sh_size of header 0, etc.)
                         // Note that it is completely bogus to crop to u16 here.
                         let index = data[self_index] as u16;
