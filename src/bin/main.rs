@@ -23,7 +23,7 @@ fn open_file<P: AsRef<Path>>(name: P) -> Vec<u8> {
 
 fn display_binary_information<P: AsRef<Path>>(binary_path: P) {
     let buf = open_file(binary_path);
-    let elf_file = ElfFile::new(&buf);
+    let elf_file = ElfFile::new(&buf).unwrap();
     println!("{}", elf_file.header);
     header::sanity_check(&elf_file).unwrap();
 

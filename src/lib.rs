@@ -38,12 +38,12 @@ pub struct ElfFile<'a> {
 }
 
 impl<'a> ElfFile<'a> {
-    pub fn new(input: &'a [u8]) -> ElfFile<'a> {
-        let header = header::parse_header(&input);
-        ElfFile {
+    pub fn new(input: &'a [u8]) -> Result<ElfFile<'a>, &'static str> {
+        let header = try!(header::parse_header(&input));
+        Ok(ElfFile {
             input: input,
             header: header,
-        }
+        })
     }
 
     pub fn section_header(&self, index: u16) -> Result<SectionHeader<'a>, &'static str> {
@@ -101,7 +101,7 @@ impl<'a> ElfFile<'a> {
 
     fn get_shstr_table(&self) -> Result<&'a [u8], &'static str> {
         // TODO cache this?
-        let header = self.section_header(try!(self.header.pt2).sh_str_index());
+        let header = self.section_header(self.header.pt2.sh_str_index());
         header.map(|h| &self.input[(h.offset() as usize)..])
     }
 }
@@ -184,9 +184,9 @@ mod test {
 
     #[test]
     fn interpret_class() {
-        assert!(ElfFile::new(&mk_elf_header(0)).header.pt2.is_err());
-        assert!(ElfFile::new(&mk_elf_header(1)).header.pt2.is_ok());
-        assert!(ElfFile::new(&mk_elf_header(2)).header.pt2.is_ok());
-        assert!(ElfFile::new(&mk_elf_header(42u8)).header.pt2.is_err());
+        assert!(ElfFile::new(&mk_elf_header(0)).is_err());
+        assert!(ElfFile::new(&mk_elf_header(1)).is_ok());
+        assert!(ElfFile::new(&mk_elf_header(2)).is_ok());
+        assert!(ElfFile::new(&mk_elf_header(42u8)).is_err());
     }
 }
