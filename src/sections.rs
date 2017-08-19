@@ -293,8 +293,8 @@ pub enum SectionData<'a> {
     Rela64(&'a [Rela<P64>]),
     Rel32(&'a [Rel<P32>]),
     Rel64(&'a [Rel<P64>]),
-    Dynamic32(&'a [Dynamic<P64>]),
-    Dynamic64(&'a [Dynamic<P32>]),
+    Dynamic32(&'a [Dynamic<P32>]),
+    Dynamic64(&'a [Dynamic<P64>]),
     HashTable(&'a HashTable),
 }
 
