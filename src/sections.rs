@@ -34,6 +34,7 @@ pub fn parse_section_header<'a>(input: &'a [u8],
     })
 }
 
+#[derive(Debug)]
 pub struct SectionIter<'b, 'a: 'b> {
     pub file: &'b ElfFile<'a>,
     pub next_index: u16,
@@ -66,7 +67,7 @@ pub const SHN_COMMON: u16 = 0xfff2;
 pub const SHN_XINDEX: u16 = 0xffff;
 pub const SHN_HIRESERVE: u16 = 0xffff;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum SectionHeader<'a> {
     Sh32(&'a SectionHeader_<P32>),
     Sh64(&'a SectionHeader_<P64>),
@@ -215,7 +216,7 @@ unsafe impl<P> Pod for SectionHeader_<P> {}
 #[derive(Copy, Clone)]
 pub struct ShType_(u32);
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ShType {
     Null,
     ProgBits,
@@ -274,6 +275,7 @@ impl fmt::Debug for ShType_ {
     }
 }
 
+#[derive(Debug)]
 pub enum SectionData<'a> {
     Empty,
     Undefined(&'a [u8]),
@@ -298,6 +300,7 @@ pub enum SectionData<'a> {
     HashTable(&'a HashTable),
 }
 
+#[derive(Debug)]
 pub struct SectionStrings<'a> {
     inner: StrReaderIterator<'a>,
 }
@@ -344,7 +347,7 @@ pub const SHF_COMPRESSED: u64 = 0x800;
 pub const SHF_MASKOS: u64 = 0x0ff00000;
 pub const SHF_MASKPROC: u64 = 0xf0000000;
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct CompressionHeader64 {
     type_: CompressionType_,
@@ -353,7 +356,7 @@ pub struct CompressionHeader64 {
     align: u64,
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct CompressionHeader32 {
     type_: CompressionType_,
@@ -364,7 +367,7 @@ pub struct CompressionHeader32 {
 #[derive(Copy, Clone)]
 pub struct CompressionType_(u32);
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum CompressionType {
     Zlib,
     OsSpecific(u32),
@@ -470,7 +473,7 @@ impl Rel<P64> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct NoteHeader {
     name_size: u32,

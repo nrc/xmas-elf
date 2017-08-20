@@ -1,4 +1,7 @@
 #![no_std]
+#![warn(box_pointers, fat_ptr_transmutes, missing_copy_implementations, missing_debug_implementations)]
+#![warn(unused_extern_crates, unused_import_braces, unused_qualifications, unused_results)]
+#![warn(variant_size_differences)]
 
 // TODO move to a module
 macro_rules! check {
@@ -31,6 +34,7 @@ use zero::{read, read_str};
 pub type P32 = u32;
 pub type P64 = u64;
 
+#[derive(Debug)]
 pub struct ElfFile<'a> {
     pub input: &'a [u8],
     pub header: Header<'a>,

@@ -33,7 +33,7 @@ pub fn parse_header<'a>(input: &'a [u8]) -> Result<Header<'a>, &'static str> {
 
 pub const MAGIC: [u8; 4] = [0x7f, 'E' as u8, 'L' as u8, 'F' as u8];
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Header<'a> {
     pub pt1: &'a HeaderPt1,
     pub pt2: HeaderPt2<'a>,
@@ -56,7 +56,7 @@ impl<'a> fmt::Display for Header<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct HeaderPt1 {
     pub magic: [u8; 4],
@@ -89,7 +89,7 @@ impl HeaderPt1 {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum HeaderPt2<'a> {
     Header32(&'a HeaderPt2_<P32>),
     Header64(&'a HeaderPt2_<P64>),
@@ -201,7 +201,7 @@ impl fmt::Debug for Class_ {
     }
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum Class {
     None,
     ThirtyTwo,
@@ -239,7 +239,7 @@ impl fmt::Debug for Data_ {
     }
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum Data {
     None,
     LittleEndian,
@@ -276,7 +276,7 @@ impl fmt::Debug for Version_ {
     }
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum Version {
     None,
     Current,
@@ -320,7 +320,7 @@ impl fmt::Debug for OsAbi_ {
     }
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum OsAbi {
     // or None
     SystemV,
@@ -358,7 +358,7 @@ impl fmt::Debug for Type_ {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Type {
     None,
     Relocatable,

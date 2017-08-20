@@ -145,7 +145,7 @@ impl_entry!(DynEntry64 with ElfFile::get_dyn_string);
 #[derive(Copy, Clone, Debug)]
 pub struct Visibility_(u8);
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 #[repr(u8)]
 pub enum Visibility {
     Default = 0,
@@ -163,7 +163,7 @@ impl Visibility_ {
 #[derive(Copy, Clone, Debug)]
 pub struct Binding_(u8);
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Binding {
     Local,
     Global,
@@ -189,7 +189,7 @@ impl Binding_ {
 #[derive(Copy, Clone, Debug)]
 pub struct Type_(u8);
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Type {
     NoType,
     Object,

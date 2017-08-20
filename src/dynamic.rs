@@ -2,13 +2,14 @@ use core::fmt;
 use {P32, P64};
 use zero::Pod;
 
+#[derive(Debug)]
 #[repr(C)]
-pub struct Dynamic<P> {
+pub struct Dynamic<P> where Tag_<P>: fmt::Debug {
     tag: Tag_<P>,
     un: P,
 }
 
-unsafe impl<P> Pod for Dynamic<P> {}
+unsafe impl<P> Pod for Dynamic<P> where Tag_<P>: fmt::Debug {}
 
 #[derive(Copy, Clone)]
 pub struct Tag_<P>(P);

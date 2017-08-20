@@ -30,6 +30,7 @@ pub fn parse_program_header<'a>(input: &'a [u8],
     }
 }
 
+#[derive(Debug)]
 pub struct ProgramIter<'b, 'a: 'b> {
     pub file: &'b ElfFile<'a>,
     pub next_index: u16,
@@ -56,7 +57,7 @@ pub enum ProgramHeader<'a> {
     Ph64(&'a ProgramHeader64),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct ProgramHeader32 {
     type_: Type_,
@@ -71,7 +72,7 @@ pub struct ProgramHeader32 {
 
 unsafe impl Pod for ProgramHeader32 {}
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct ProgramHeader64 {
     type_: Type_,
@@ -215,7 +216,7 @@ impl fmt::LowerHex for Flags {
 #[derive(Copy, Clone)]
 pub struct Type_(u32);
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Type {
     Null,
     Load,
@@ -255,6 +256,7 @@ impl fmt::Debug for Type_ {
     }
 }
 
+#[derive(Debug)]
 pub enum SegmentData<'a> {
     Empty,
     Undefined(&'a [u8]),
