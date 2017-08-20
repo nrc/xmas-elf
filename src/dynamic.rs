@@ -49,6 +49,7 @@ pub enum Tag<P> {
     PreInitArray,
     PreInitArraySize,
     SymTabShIndex,
+    Flags1,
     OsSpecific(P),
     ProcessorSpecific(P),
 }
@@ -65,7 +66,8 @@ macro_rules! impls {
                     Tag::Needed | Tag::PltRelSize | Tag::RelaSize | Tag::RelaEnt | Tag::StrSize |
                     Tag::SymEnt | Tag::SoName | Tag::RPath | Tag::RelSize | Tag::RelEnt | Tag::PltRel |
                     Tag::InitArraySize | Tag::FiniArraySize | Tag::RunPath | Tag::Flags |
-                    Tag::PreInitArraySize | Tag::OsSpecific(_) | Tag::ProcessorSpecific(_) => Ok(self.un),
+                    Tag::PreInitArraySize | Tag::Flags1 | Tag::OsSpecific(_) |
+                    Tag::ProcessorSpecific(_) => Ok(self.un),
                     _ => Err("Invalid value"),
                 }
             }
@@ -118,6 +120,7 @@ macro_rules! impls {
                     32 => Ok(Tag::PreInitArray),
                     33 => Ok(Tag::PreInitArraySize),
                     34 => Ok(Tag::SymTabShIndex),
+                    0x6ffffffb => Ok(Tag::Flags1),
                     t if t >= 0x6000000D && t <= 0x6fffffff => Ok(Tag::OsSpecific(t)),
                     t if t >= 0x70000000 && t <= 0x7fffffff => Ok(Tag::ProcessorSpecific(t)),
                     _ => Err("Invalid tag value"),
@@ -135,3 +138,33 @@ macro_rules! impls {
 
 impls!(P32);
 impls!(P64);
+
+/* Flag values used in the DT_FLAGS_1 .dynamic entry.  */
+pub const FLAG_1_NOW: u64 = 0x00000001;
+pub const FLAG_1_GLOBAL: u64 = 0x00000002;
+pub const FLAG_1_GROUP: u64 = 0x00000004;
+pub const FLAG_1_NODELETE: u64 = 0x00000008;
+pub const FLAG_1_LOADFLTR: u64 = 0x00000010;
+pub const FLAG_1_INITFIRST: u64 = 0x00000020;
+pub const FLAG_1_NOOPEN: u64 = 0x00000040;
+pub const FLAG_1_ORIGIN: u64 = 0x00000080;
+pub const FLAG_1_DIRECT: u64 = 0x00000100;
+pub const FLAG_1_TRANS: u64 = 0x00000200;
+pub const FLAG_1_INTERPOSE: u64 = 0x00000400;
+pub const FLAG_1_NODEFLIB: u64 = 0x00000800;
+pub const FLAG_1_NODUMP: u64 = 0x00001000;
+pub const FLAG_1_CONFALT: u64 = 0x00002000;
+pub const FLAG_1_ENDFILTEE: u64 = 0x00004000;
+pub const FLAG_1_DISPRELDNE: u64 = 0x00008000;
+pub const FLAG_1_DISPRELPND: u64 = 0x00010000;
+pub const FLAG_1_NODIRECT: u64 = 0x00020000;
+pub const FLAG_1_IGNMULDEF: u64 = 0x00040000;
+pub const FLAG_1_NOKSYMS: u64 = 0x00080000;
+pub const FLAG_1_NOHDR: u64 = 0x00100000;
+pub const FLAG_1_EDITED: u64 = 0x00200000;
+pub const FLAG_1_NORELOC: u64 = 0x00400000;
+pub const FLAG_1_SYMINTPOSE: u64 = 0x00800000;
+pub const FLAG_1_GLOBAUDIT: u64 = 0x01000000;
+pub const FLAG_1_SINGLETON: u64 = 0x02000000;
+pub const FLAG_1_STUB: u64 = 0x04000000;
+pub const FLAG_1_PIE: u64 = 0x08000000;
