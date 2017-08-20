@@ -140,7 +140,7 @@ macro_rules! ph_impl {
                 self.get_type().map(|typ| match typ {
                     Type::Null => SegmentData::Empty,
                     Type::Load | Type::Interp | Type::ShLib | Type::Phdr | Type::Tls |
-                    Type::OsSpecific(_) | Type::ProcessorSpecific(_) => {
+                    Type::GnuRelro | Type::OsSpecific(_) | Type::ProcessorSpecific(_) => {
                         SegmentData::Undefined(self.raw_data(elf_file))
                     }
                     Type::Dynamic => {
@@ -225,6 +225,7 @@ pub enum Type {
     ShLib,
     Phdr,
     Tls,
+    GnuRelro,
     OsSpecific(u32),
     ProcessorSpecific(u32),
 }
@@ -240,6 +241,7 @@ impl Type_ {
             5 => Ok(Type::ShLib),
             6 => Ok(Type::Phdr),
             7 => Ok(Type::Tls),
+            TYPE_GNU_RELRO => Ok(Type::GnuRelro),
             t if t >= TYPE_LOOS && t <= TYPE_HIOS => Ok(Type::OsSpecific(t)),
             t if t >= TYPE_LOPROC && t <= TYPE_HIPROC => Ok(Type::ProcessorSpecific(t)),
             _ => Err("Invalid type"),
@@ -267,6 +269,7 @@ pub const TYPE_LOOS: u32 = 0x60000000;
 pub const TYPE_HIOS: u32 = 0x6fffffff;
 pub const TYPE_LOPROC: u32 = 0x70000000;
 pub const TYPE_HIPROC: u32 = 0x7fffffff;
+pub const TYPE_GNU_RELRO: u32 = TYPE_LOOS + 0x474e552;
 
 pub const FLAG_X: u32 = 0x1;
 pub const FLAG_W: u32 = 0x2;
