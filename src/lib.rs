@@ -27,7 +27,6 @@ use header::Header;
 use sections::{SectionHeader, SectionIter};
 use program::{ProgramHeader, ProgramIter};
 use zero::{read, read_str};
-use symbol_table::Entry;
 
 pub type P32 = u32;
 pub type P64 = u64;
