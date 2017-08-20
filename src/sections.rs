@@ -159,7 +159,7 @@ impl<'a> SectionHeader<'a> {
     }
 
     pub fn raw_data(&self, elf_file: &ElfFile<'a>) -> &'a [u8] {
-        assert!(self.get_type().unwrap() != ShType::Null);
+        assert_ne!(self.get_type().unwrap(), ShType::Null);
         &elf_file.input[self.offset() as usize..(self.offset() + self.size()) as usize]
     }
 
@@ -491,7 +491,7 @@ impl NoteHeader {
     pub fn name<'a>(&'a self, input: &'a [u8]) -> &'a str {
         let result = read_str(input);
         // - 1 is due to null terminator
-        assert!(result.len() == (self.name_size - 1) as usize);
+        assert_eq!(result.len(), (self.name_size - 1) as usize);
         result
     }
 

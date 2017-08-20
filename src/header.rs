@@ -31,7 +31,7 @@ pub fn parse_header<'a>(input: &'a [u8]) -> Result<Header<'a>, &'static str> {
     })
 }
 
-pub const MAGIC: [u8; 4] = [0x7f, 'E' as u8, 'L' as u8, 'F' as u8];
+pub const MAGIC: [u8; 4] = [0x7f, b'E', b'L', b'F'];
 
 #[derive(Clone, Copy, Debug)]
 pub struct Header<'a> {

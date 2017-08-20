@@ -19,12 +19,10 @@ pub fn parse_program_header<'a>(input: &'a [u8],
 
     match header.pt1.class() {
         Class::ThirtyTwo => {
-            let header: &'a ProgramHeader32 = read(&input[start..end]);
-            Ok(ProgramHeader::Ph32(header))
+            Ok(ProgramHeader::Ph32(read(&input[start..end])))
         }
         Class::SixtyFour => {
-            let header: &'a ProgramHeader64 = read(&input[start..end]);
-            Ok(ProgramHeader::Ph64(header))
+            Ok(ProgramHeader::Ph64(read(&input[start..end])))
         }
         Class::None | Class::Other(_) => unreachable!(),
     }
