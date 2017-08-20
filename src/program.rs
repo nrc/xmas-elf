@@ -65,7 +65,7 @@ pub struct ProgramHeader32 {
     physical_addr: u32,
     file_size: u32,
     mem_size: u32,
-    flags: u32,
+    flags: Flags,
     align: u32,
 }
 
@@ -75,7 +75,7 @@ unsafe impl Pod for ProgramHeader32 {}
 #[repr(C)]
 pub struct ProgramHeader64 {
     type_: Type_,
-    flags: u32,
+    flags: Flags,
     offset: u64,
     virtual_addr: u64,
     physical_addr: u64,
@@ -118,7 +118,7 @@ impl<'a> ProgramHeader<'a> {
     getter!(offset, u64);
     getter!(physical_addr, u64);
     getter!(virtual_addr, u64);
-    getter!(flags, u32);
+    getter!(flags, Flags);
 }
 
 impl<'a> fmt::Display for ProgramHeader<'a> {
@@ -176,13 +176,13 @@ macro_rules! ph_impl {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 try!(writeln!(f, "Program header:"));
                 try!(writeln!(f, "    type:             {:?}", self.get_type()));
-                try!(writeln!(f, "    flags:            {:?}", self.flags));
-                try!(writeln!(f, "    offset:           {:?}", self.offset));
-                try!(writeln!(f, "    virtual address:  {:?}", self.virtual_addr));
-                try!(writeln!(f, "    physical address: {:?}", self.physical_addr));
-                try!(writeln!(f, "    file size:        {:?}", self.file_size));
-                try!(writeln!(f, "    memory size:      {:?}", self.mem_size));
-                try!(writeln!(f, "    align:            {:?}", self.align));
+                try!(writeln!(f, "    flags:            {}", self.flags));
+                try!(writeln!(f, "    offset:           {:#x}", self.offset));
+                try!(writeln!(f, "    virtual address:  {:#x}", self.virtual_addr));
+                try!(writeln!(f, "    physical address: {:#x}", self.physical_addr));
+                try!(writeln!(f, "    file size:        {:#x}", self.file_size));
+                try!(writeln!(f, "    memory size:      {:#x}", self.mem_size));
+                try!(writeln!(f, "    align:            {:#x}", self.align));
                 Ok(())
             }
         }
@@ -191,6 +191,26 @@ macro_rules! ph_impl {
 
 ph_impl!(ProgramHeader32);
 ph_impl!(ProgramHeader64);
+
+#[derive(Copy, Clone, Debug)]
+pub struct Flags(u32);
+
+impl fmt::Display for Flags {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}{}{}",
+               if self.0 & FLAG_X == FLAG_X { 'X' } else { ' ' },
+               if self.0 & FLAG_W == FLAG_W { 'W' } else { ' ' },
+               if self.0 & FLAG_R == FLAG_R { 'R' } else { ' ' })
+    }
+}
+
+impl fmt::LowerHex for Flags {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let val = self.0;
+
+        write!(f, "{:#x}", val) // delegate to i32's implementation
+    }
+}
 
 #[derive(Copy, Clone)]
 pub struct Type_(u32);
