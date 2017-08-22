@@ -181,7 +181,7 @@ impl<P: fmt::Display> fmt::Display for HeaderPt2_<P> {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub struct Class_(u8);
 
 impl Class_ {
@@ -205,7 +205,7 @@ impl fmt::Debug for Class_ {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Class {
     None,
     ThirtyTwo,
