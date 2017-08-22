@@ -42,7 +42,7 @@ impl HashTable {
         }
     }
 
-    pub fn lookup<'a, F>(&'a self, name: &str, f: F) -> &'a Entry
+    pub fn lookup<'a, F>(&'a self, _name: &str, _f: F) -> &'a Entry
         where F: Fn(&'a Entry) -> bool
     {
         // TODO
