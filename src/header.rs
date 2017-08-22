@@ -7,6 +7,10 @@ use zero::{read, Pod};
 
 pub fn parse_header<'a>(input: &'a [u8]) -> Result<Header<'a>, &'static str> {
     let size_pt1 = mem::size_of::<HeaderPt1>();
+    if input.len() < size_pt1 {
+        return Err("File is shorter than the first ELF header part");
+    }
+
     let header_1: &'a HeaderPt1 = read(&input[..size_pt1]);
     if header_1.magic != MAGIC {
         return Err("Did not find ELF magic number");
