@@ -19,17 +19,16 @@ pub fn parse_program_header<'a>(input: &'a [u8],
 
     match header.pt1.class() {
         Class::ThirtyTwo => {
-            let header: &'a ProgramHeader32 = read(&input[start..end]);
-            Ok(ProgramHeader::Ph32(header))
+            Ok(ProgramHeader::Ph32(read(&input[start..end])))
         }
         Class::SixtyFour => {
-            let header: &'a ProgramHeader64 = read(&input[start..end]);
-            Ok(ProgramHeader::Ph64(header))
+            Ok(ProgramHeader::Ph64(read(&input[start..end])))
         }
         Class::None | Class::Other(_) => unreachable!(),
     }
 }
 
+#[derive(Debug)]
 pub struct ProgramIter<'b, 'a: 'b> {
     pub file: &'b ElfFile<'a>,
     pub next_index: u16,
@@ -56,7 +55,7 @@ pub enum ProgramHeader<'a> {
     Ph64(&'a ProgramHeader64),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct ProgramHeader32 {
     type_: Type_,
@@ -65,17 +64,17 @@ pub struct ProgramHeader32 {
     physical_addr: u32,
     file_size: u32,
     mem_size: u32,
-    flags: u32,
+    flags: Flags,
     align: u32,
 }
 
 unsafe impl Pod for ProgramHeader32 {}
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct ProgramHeader64 {
     type_: Type_,
-    flags: u32,
+    flags: Flags,
     offset: u64,
     virtual_addr: u64,
     physical_addr: u64,
@@ -118,7 +117,7 @@ impl<'a> ProgramHeader<'a> {
     getter!(offset, u64);
     getter!(physical_addr, u64);
     getter!(virtual_addr, u64);
-    getter!(flags, u32);
+    getter!(flags, Flags);
 }
 
 impl<'a> fmt::Display for ProgramHeader<'a> {
@@ -140,7 +139,7 @@ macro_rules! ph_impl {
                 self.get_type().map(|typ| match typ {
                     Type::Null => SegmentData::Empty,
                     Type::Load | Type::Interp | Type::ShLib | Type::Phdr | Type::Tls |
-                    Type::OsSpecific(_) | Type::ProcessorSpecific(_) => {
+                    Type::GnuRelro | Type::OsSpecific(_) | Type::ProcessorSpecific(_) => {
                         SegmentData::Undefined(self.raw_data(elf_file))
                     }
                     Type::Dynamic => {
@@ -176,13 +175,13 @@ macro_rules! ph_impl {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 try!(writeln!(f, "Program header:"));
                 try!(writeln!(f, "    type:             {:?}", self.get_type()));
-                try!(writeln!(f, "    flags:            {:?}", self.flags));
-                try!(writeln!(f, "    offset:           {:?}", self.offset));
-                try!(writeln!(f, "    virtual address:  {:?}", self.virtual_addr));
-                try!(writeln!(f, "    physical address: {:?}", self.physical_addr));
-                try!(writeln!(f, "    file size:        {:?}", self.file_size));
-                try!(writeln!(f, "    memory size:      {:?}", self.mem_size));
-                try!(writeln!(f, "    align:            {:?}", self.align));
+                try!(writeln!(f, "    flags:            {}", self.flags));
+                try!(writeln!(f, "    offset:           {:#x}", self.offset));
+                try!(writeln!(f, "    virtual address:  {:#x}", self.virtual_addr));
+                try!(writeln!(f, "    physical address: {:#x}", self.physical_addr));
+                try!(writeln!(f, "    file size:        {:#x}", self.file_size));
+                try!(writeln!(f, "    memory size:      {:#x}", self.mem_size));
+                try!(writeln!(f, "    align:            {:#x}", self.align));
                 Ok(())
             }
         }
@@ -192,10 +191,30 @@ macro_rules! ph_impl {
 ph_impl!(ProgramHeader32);
 ph_impl!(ProgramHeader64);
 
+#[derive(Copy, Clone, Debug)]
+pub struct Flags(u32);
+
+impl fmt::Display for Flags {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}{}{}",
+               if self.0 & FLAG_X == FLAG_X { 'X' } else { ' ' },
+               if self.0 & FLAG_W == FLAG_W { 'W' } else { ' ' },
+               if self.0 & FLAG_R == FLAG_R { 'R' } else { ' ' })
+    }
+}
+
+impl fmt::LowerHex for Flags {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let val = self.0;
+
+        write!(f, "{:#x}", val) // delegate to i32's implementation
+    }
+}
+
 #[derive(Copy, Clone)]
 pub struct Type_(u32);
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Type {
     Null,
     Load,
@@ -205,6 +224,7 @@ pub enum Type {
     ShLib,
     Phdr,
     Tls,
+    GnuRelro,
     OsSpecific(u32),
     ProcessorSpecific(u32),
 }
@@ -220,6 +240,7 @@ impl Type_ {
             5 => Ok(Type::ShLib),
             6 => Ok(Type::Phdr),
             7 => Ok(Type::Tls),
+            TYPE_GNU_RELRO => Ok(Type::GnuRelro),
             t if t >= TYPE_LOOS && t <= TYPE_HIOS => Ok(Type::OsSpecific(t)),
             t if t >= TYPE_LOPROC && t <= TYPE_HIPROC => Ok(Type::ProcessorSpecific(t)),
             _ => Err("Invalid type"),
@@ -233,6 +254,7 @@ impl fmt::Debug for Type_ {
     }
 }
 
+#[derive(Debug)]
 pub enum SegmentData<'a> {
     Empty,
     Undefined(&'a [u8]),
@@ -247,6 +269,7 @@ pub const TYPE_LOOS: u32 = 0x60000000;
 pub const TYPE_HIOS: u32 = 0x6fffffff;
 pub const TYPE_LOPROC: u32 = 0x70000000;
 pub const TYPE_HIPROC: u32 = 0x7fffffff;
+pub const TYPE_GNU_RELRO: u32 = TYPE_LOOS + 0x474e552;
 
 pub const FLAG_X: u32 = 0x1;
 pub const FLAG_W: u32 = 0x2;

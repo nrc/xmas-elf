@@ -1,4 +1,7 @@
 #![no_std]
+#![warn(box_pointers, fat_ptr_transmutes, missing_copy_implementations, missing_debug_implementations)]
+#![warn(unused_extern_crates, unused_import_braces, unused_qualifications, unused_results)]
+#![warn(variant_size_differences)]
 
 // TODO move to a module
 macro_rules! check {
@@ -27,11 +30,11 @@ use header::Header;
 use sections::{SectionHeader, SectionIter};
 use program::{ProgramHeader, ProgramIter};
 use zero::{read, read_str};
-use symbol_table::Entry;
 
 pub type P32 = u32;
 pub type P64 = u64;
 
+#[derive(Debug)]
 pub struct ElfFile<'a> {
     pub input: &'a [u8],
     pub header: Header<'a>,
@@ -39,7 +42,7 @@ pub struct ElfFile<'a> {
 
 impl<'a> ElfFile<'a> {
     pub fn new(input: &'a [u8]) -> Result<ElfFile<'a>, &'static str> {
-        let header = try!(header::parse_header(&input));
+        let header = try!(header::parse_header(input));
         Ok(ElfFile {
             input: input,
             header: header,
@@ -52,7 +55,7 @@ impl<'a> ElfFile<'a> {
 
     pub fn section_iter<'b>(&'b self) -> SectionIter<'b, 'a> {
         SectionIter {
-            file: &self,
+            file: self,
             next_index: 0,
         }
     }
@@ -63,7 +66,7 @@ impl<'a> ElfFile<'a> {
 
     pub fn program_iter<'b>(&'b self) -> ProgramIter<'b, 'a> {
         ProgramIter {
-            file: &self,
+            file: self,
             next_index: 0,
         }
     }
@@ -81,7 +84,7 @@ impl<'a> ElfFile<'a> {
     }
 
     pub fn get_dyn_string(&self, index: u32) -> Result<&'a str, &'static str> {
-        let header = self.find_section_by_name(".dynstr").unwrap();
+        let header = try!(self.find_section_by_name(".dynstr").ok_or("no .dynstr section"));
         Ok(read_str(&header.raw_data(self)[(index as usize)..]))
     }
 
@@ -89,7 +92,7 @@ impl<'a> ElfFile<'a> {
     // a HashTable mapping names to section header indices?
     pub fn find_section_by_name(&self, name: &str) -> Option<SectionHeader<'a>> {
         for sect in self.section_iter() {
-            if let Ok(sect_name) = sect.get_name(&self) {
+            if let Ok(sect_name) = sect.get_name(self) {
                 if sect_name == name {
                     return Some(sect);
                 }

@@ -34,6 +34,7 @@ pub fn parse_section_header<'a>(input: &'a [u8],
     })
 }
 
+#[derive(Debug)]
 pub struct SectionIter<'b, 'a: 'b> {
     pub file: &'b ElfFile<'a>,
     pub next_index: u16,
@@ -66,7 +67,7 @@ pub const SHN_COMMON: u16 = 0xfff2;
 pub const SHN_XINDEX: u16 = 0xffff;
 pub const SHN_HIRESERVE: u16 = 0xffff;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum SectionHeader<'a> {
     Sh32(&'a SectionHeader_<P32>),
     Sh64(&'a SectionHeader_<P64>),
@@ -158,7 +159,7 @@ impl<'a> SectionHeader<'a> {
     }
 
     pub fn raw_data(&self, elf_file: &ElfFile<'a>) -> &'a [u8] {
-        assert!(self.get_type().unwrap() != ShType::Null);
+        assert_ne!(self.get_type().unwrap(), ShType::Null);
         &elf_file.input[self.offset() as usize..(self.offset() + self.size()) as usize]
     }
 
@@ -215,7 +216,7 @@ unsafe impl<P> Pod for SectionHeader_<P> {}
 #[derive(Copy, Clone)]
 pub struct ShType_(u32);
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ShType {
     Null,
     ProgBits,
@@ -274,6 +275,7 @@ impl fmt::Debug for ShType_ {
     }
 }
 
+#[derive(Debug)]
 pub enum SectionData<'a> {
     Empty,
     Undefined(&'a [u8]),
@@ -293,11 +295,12 @@ pub enum SectionData<'a> {
     Rela64(&'a [Rela<P64>]),
     Rel32(&'a [Rel<P32>]),
     Rel64(&'a [Rel<P64>]),
-    Dynamic32(&'a [Dynamic<P64>]),
-    Dynamic64(&'a [Dynamic<P32>]),
+    Dynamic32(&'a [Dynamic<P32>]),
+    Dynamic64(&'a [Dynamic<P64>]),
     HashTable(&'a HashTable),
 }
 
+#[derive(Debug)]
 pub struct SectionStrings<'a> {
     inner: StrReaderIterator<'a>,
 }
@@ -344,7 +347,7 @@ pub const SHF_COMPRESSED: u64 = 0x800;
 pub const SHF_MASKOS: u64 = 0x0ff00000;
 pub const SHF_MASKPROC: u64 = 0xf0000000;
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct CompressionHeader64 {
     type_: CompressionType_,
@@ -353,7 +356,7 @@ pub struct CompressionHeader64 {
     align: u64,
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct CompressionHeader32 {
     type_: CompressionType_,
@@ -364,7 +367,7 @@ pub struct CompressionHeader32 {
 #[derive(Copy, Clone)]
 pub struct CompressionType_(u32);
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum CompressionType {
     Zlib,
     OsSpecific(u32),
@@ -470,7 +473,7 @@ impl Rel<P64> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct NoteHeader {
     name_size: u32,
@@ -488,7 +491,7 @@ impl NoteHeader {
     pub fn name<'a>(&'a self, input: &'a [u8]) -> &'a str {
         let result = read_str(input);
         // - 1 is due to null terminator
-        assert!(result.len() == (self.name_size - 1) as usize);
+        assert_eq!(result.len(), (self.name_size - 1) as usize);
         result
     }
 

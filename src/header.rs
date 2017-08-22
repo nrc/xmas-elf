@@ -7,6 +7,10 @@ use zero::{read, Pod};
 
 pub fn parse_header<'a>(input: &'a [u8]) -> Result<Header<'a>, &'static str> {
     let size_pt1 = mem::size_of::<HeaderPt1>();
+    if input.len() < size_pt1 {
+        return Err("File is shorter than the first ELF header part");
+    }
+
     let header_1: &'a HeaderPt1 = read(&input[..size_pt1]);
     if header_1.magic != MAGIC {
         return Err("Did not find ELF magic number");
@@ -31,9 +35,9 @@ pub fn parse_header<'a>(input: &'a [u8]) -> Result<Header<'a>, &'static str> {
     })
 }
 
-pub const MAGIC: [u8; 4] = [0x7f, 'E' as u8, 'L' as u8, 'F' as u8];
+pub const MAGIC: [u8; 4] = [0x7f, b'E', b'L', b'F'];
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Header<'a> {
     pub pt1: &'a HeaderPt1,
     pub pt2: HeaderPt2<'a>,
@@ -56,7 +60,7 @@ impl<'a> fmt::Display for Header<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct HeaderPt1 {
     pub magic: [u8; 4],
@@ -89,7 +93,7 @@ impl HeaderPt1 {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum HeaderPt2<'a> {
     Header32(&'a HeaderPt2_<P32>),
     Header64(&'a HeaderPt2_<P64>),
@@ -177,7 +181,7 @@ impl<P: fmt::Display> fmt::Display for HeaderPt2_<P> {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub struct Class_(u8);
 
 impl Class_ {
@@ -201,7 +205,7 @@ impl fmt::Debug for Class_ {
     }
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Class {
     None,
     ThirtyTwo,
@@ -239,7 +243,7 @@ impl fmt::Debug for Data_ {
     }
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum Data {
     None,
     LittleEndian,
@@ -276,7 +280,7 @@ impl fmt::Debug for Version_ {
     }
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum Version {
     None,
     Current,
@@ -320,7 +324,7 @@ impl fmt::Debug for OsAbi_ {
     }
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum OsAbi {
     // or None
     SystemV,
@@ -358,7 +362,7 @@ impl fmt::Debug for Type_ {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Type {
     None,
     Relocatable,
@@ -428,8 +432,6 @@ pub fn sanity_check(file: &ElfFile) -> Result<(), &'static str> {
     check!(!file.header.pt1.version.is_none(), "no version");
     check!(!file.header.pt1.data.is_none(), "no data format");
 
-    check!(pt2.entry_point() < file.input.len() as u64,
-           "entry point out of range");
     check!(pt2.ph_offset() + (pt2.ph_entry_size() as u64) * (pt2.ph_count() as u64) <=
            file.input.len() as u64,
            "program header table out of range");

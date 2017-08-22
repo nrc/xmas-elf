@@ -84,13 +84,13 @@ pub trait Entry {
                 // TODO factor out distinguished section names into sections consts
                 let header = elf_file.find_section_by_name(".symtab_shndx");
                 if let Some(header) = header {
-                    assert!(try!(header.get_type()) == sections::ShType::SymTabShIndex);
+                    assert_eq!(try!(header.get_type()), sections::ShType::SymTabShIndex);
                     if let sections::SectionData::SymTabShIndex(data) =
                         try!(header.get_data(elf_file)) {
                         // TODO cope with u32 section indices (count is in sh_size of header 0, etc.)
                         // Note that it is completely bogus to crop to u16 here.
                         let index = data[self_index] as u16;
-                        assert!(index != sections::SHN_UNDEF);
+                        assert_ne!(index, sections::SHN_UNDEF);
                         elf_file.section_header(index)
                     } else {
                         Err("Expected SymTabShIndex")
@@ -145,7 +145,7 @@ impl_entry!(DynEntry64 with ElfFile::get_dyn_string);
 #[derive(Copy, Clone, Debug)]
 pub struct Visibility_(u8);
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 #[repr(u8)]
 pub enum Visibility {
     Default = 0,
@@ -163,7 +163,7 @@ impl Visibility_ {
 #[derive(Copy, Clone, Debug)]
 pub struct Binding_(u8);
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Binding {
     Local,
     Global,
@@ -189,7 +189,7 @@ impl Binding_ {
 #[derive(Copy, Clone, Debug)]
 pub struct Type_(u8);
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Type {
     NoType,
     Object,
