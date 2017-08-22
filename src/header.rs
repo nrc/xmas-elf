@@ -432,8 +432,6 @@ pub fn sanity_check(file: &ElfFile) -> Result<(), &'static str> {
     check!(!file.header.pt1.version.is_none(), "no version");
     check!(!file.header.pt1.data.is_none(), "no data format");
 
-    check!(pt2.entry_point() < file.input.len() as u64,
-           "entry point out of range");
     check!(pt2.ph_offset() + (pt2.ph_entry_size() as u64) * (pt2.ph_count() as u64) <=
            file.input.len() as u64,
            "program header table out of range");
