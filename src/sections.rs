@@ -169,6 +169,8 @@ impl<'a> SectionHeader<'a> {
     getter!(offset, u64);
     getter!(size, u64);
     getter!(type_, ShType_);
+    getter!(link, u32);
+    getter!(info, u32);
 }
 
 impl<'a> fmt::Display for SectionHeader<'a> {
