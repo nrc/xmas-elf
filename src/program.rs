@@ -194,6 +194,20 @@ ph_impl!(ProgramHeader64);
 #[derive(Copy, Clone, Debug)]
 pub struct Flags(u32);
 
+impl Flags {
+    pub fn is_execute(&self) -> bool {
+        self.0 & FLAG_X == FLAG_X
+    }
+
+    pub fn is_write(&self) -> bool {
+        self.0 & FLAG_W == FLAG_W
+    }
+
+    pub fn is_read(&self) -> bool {
+        self.0 & FLAG_R == FLAG_R
+    }
+}
+
 impl fmt::Display for Flags {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}{}{}",
