@@ -192,7 +192,7 @@ ph_impl!(ProgramHeader32);
 ph_impl!(ProgramHeader64);
 
 #[derive(Copy, Clone, Debug)]
-pub struct Flags(u32);
+pub struct Flags(pub u32);
 
 impl Flags {
     pub fn is_execute(&self) -> bool {
