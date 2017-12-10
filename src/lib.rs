@@ -1,5 +1,5 @@
 #![no_std]
-#![warn(box_pointers, fat_ptr_transmutes, missing_copy_implementations, missing_debug_implementations)]
+#![warn(box_pointers, missing_copy_implementations, missing_debug_implementations)]
 #![warn(unused_extern_crates, unused_import_braces, unused_qualifications, unused_results)]
 #![warn(variant_size_differences)]
 
