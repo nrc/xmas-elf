@@ -10,6 +10,10 @@ exclude = ["test-data/*"]
 
 [dependencies]
 zero = "0.1"
+flate2 = { version = "1", optional = true }
+
+[features]
+compression = ["flate2"]
 
 [lib]
 name = "xmas_elf"
