@@ -55,7 +55,7 @@ pub enum ProgramHeader<'a> {
     Ph64(&'a ProgramHeader64),
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Default)]
 #[repr(C)]
 pub struct ProgramHeader32 {
     type_: Type_,
@@ -70,7 +70,7 @@ pub struct ProgramHeader32 {
 
 unsafe impl Pod for ProgramHeader32 {}
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Default)]
 #[repr(C)]
 pub struct ProgramHeader64 {
     type_: Type_,
@@ -251,7 +251,7 @@ impl ProgramHeader64 {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Default)]
 pub struct Flags(pub u32);
 
 impl Flags {
@@ -285,7 +285,7 @@ impl fmt::LowerHex for Flags {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct Type_(u32);
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
