@@ -55,7 +55,7 @@ pub enum ProgramHeader<'a> {
     Ph64(&'a ProgramHeader64),
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Default)]
 #[repr(C)]
 pub struct ProgramHeader32 {
     type_: Type_,
@@ -70,7 +70,7 @@ pub struct ProgramHeader32 {
 
 unsafe impl Pod for ProgramHeader32 {}
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Default)]
 #[repr(C)]
 pub struct ProgramHeader64 {
     type_: Type_,
@@ -191,7 +191,67 @@ macro_rules! ph_impl {
 ph_impl!(ProgramHeader32);
 ph_impl!(ProgramHeader64);
 
-#[derive(Copy, Clone, Debug)]
+impl ProgramHeader32 {
+    pub fn align(&self) -> u32 {
+        self.align
+    }
+
+    pub fn file_size(&self) -> u32 {
+        self.file_size
+    }
+
+    pub fn mem_size(&self) -> u32 {
+        self.mem_size
+    }
+
+    pub fn offset(&self) -> u32 {
+        self.offset
+    }
+
+    pub fn physical_addr(&self) -> u32 {
+        self.physical_addr
+    }
+
+    pub fn virtual_addr(&self) -> u32 {
+        self.virtual_addr
+    }
+
+    pub fn flags(&self) -> Flags {
+        self.flags
+    }
+}
+
+impl ProgramHeader64 {
+    pub fn align(&self) -> u64 {
+        self.align
+    }
+
+    pub fn file_size(&self) -> u64 {
+        self.file_size
+    }
+
+    pub fn mem_size(&self) -> u64 {
+        self.mem_size
+    }
+
+    pub fn offset(&self) -> u64 {
+        self.offset
+    }
+
+    pub fn physical_addr(&self) -> u64 {
+        self.physical_addr
+    }
+
+    pub fn virtual_addr(&self) -> u64 {
+        self.virtual_addr
+    }
+
+    pub fn flags(&self) -> Flags {
+        self.flags
+    }
+}
+
+#[derive(Copy, Clone, Debug, Default)]
 pub struct Flags(pub u32);
 
 impl Flags {
@@ -225,7 +285,7 @@ impl fmt::LowerHex for Flags {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct Type_(u32);
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
