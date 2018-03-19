@@ -191,6 +191,66 @@ macro_rules! ph_impl {
 ph_impl!(ProgramHeader32);
 ph_impl!(ProgramHeader64);
 
+impl ProgramHeader32 {
+    pub fn align(&self) -> u32 {
+        self.align
+    }
+
+    pub fn file_size(&self) -> u32 {
+        self.file_size
+    }
+
+    pub fn mem_size(&self) -> u32 {
+        self.mem_size
+    }
+
+    pub fn offset(&self) -> u32 {
+        self.offset
+    }
+
+    pub fn physical_addr(&self) -> u32 {
+        self.physical_addr
+    }
+
+    pub fn virtual_addr(&self) -> u32 {
+        self.virtual_addr
+    }
+
+    pub fn flags(&self) -> Flags {
+        self.flags
+    }
+}
+
+impl ProgramHeader64 {
+    pub fn align(&self) -> u64 {
+        self.align
+    }
+
+    pub fn file_size(&self) -> u64 {
+        self.file_size
+    }
+
+    pub fn mem_size(&self) -> u64 {
+        self.mem_size
+    }
+
+    pub fn offset(&self) -> u64 {
+        self.offset
+    }
+
+    pub fn physical_addr(&self) -> u64 {
+        self.physical_addr
+    }
+
+    pub fn virtual_addr(&self) -> u64 {
+        self.virtual_addr
+    }
+
+    pub fn flags(&self) -> Flags {
+        self.flags
+    }
+}
+
 #[derive(Copy, Clone, Debug)]
 pub struct Flags(pub u32);
 
