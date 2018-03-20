@@ -120,6 +120,10 @@ pub trait Extensions<'a> {
     /// Parse and return the value of the .gnu_debuglink section, if it
     /// exists and is well-formed.
     fn get_gnu_debuglink(&self) -> Option<(&'a str, u32)>;
+
+    /// Parse and return the value of the .gnu_debugaltlink section, if it
+    /// exists and is well-formed.
+    fn get_gnu_debugaltlink(&self) -> Option<(&'a str, &'a [u8])>;
 }
 
 impl<'a> Extensions<'a> for ElfFile<'a> {
@@ -147,13 +151,32 @@ impl<'a> Extensions<'a> for ElfFile<'a> {
 
     fn get_gnu_debuglink(&self) -> Option<(&'a str, u32)> {
         self.find_section_by_name(".gnu_debuglink")
-            .map(|header| {
+            .and_then(|header| {
                 let data = header.raw_data(self);
                 let file = read_str(data);
                 // Round up to the nearest multiple of 4.
                 let checksum_pos = ((file.len() + 4) / 4) * 4;
-                let checksum: u32 = *read(&data[checksum_pos..]);
-                (file, checksum)
+                if checksum_pos + 4 <= data.len() {
+                    let checksum: u32 = *read(&data[checksum_pos..]);
+                    Some((file, checksum))
+                } else {
+                    None
+                }
+            })
+    }
+
+    fn get_gnu_debugaltlink(&self) -> Option<(&'a str, &'a [u8])> {
+        self.find_section_by_name(".gnu_debugaltlink")
+            .map(|header| header.raw_data(self))
+            .and_then(|data| {
+                let file = read_str(data);
+                // The rest of the data is a SHA1 checksum of the debuginfo, no alignment
+                let checksum_pos = file.len() + 1;
+                if checksum_pos <= data.len() {
+                    Some((file, &data[checksum_pos..]))
+                } else {
+                    None
+                }
             })
     }
 }
