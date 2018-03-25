@@ -58,14 +58,14 @@ pub enum ProgramHeader<'a> {
 #[derive(Copy, Clone, Debug, Default)]
 #[repr(C)]
 pub struct ProgramHeader32 {
-    type_: Type_,
-    offset: u32,
-    virtual_addr: u32,
-    physical_addr: u32,
-    file_size: u32,
-    mem_size: u32,
-    flags: Flags,
-    align: u32,
+    pub type_: Type_,
+    pub offset: u32,
+    pub virtual_addr: u32,
+    pub physical_addr: u32,
+    pub file_size: u32,
+    pub mem_size: u32,
+    pub flags: Flags,
+    pub align: u32,
 }
 
 unsafe impl Pod for ProgramHeader32 {}
@@ -73,14 +73,14 @@ unsafe impl Pod for ProgramHeader32 {}
 #[derive(Copy, Clone, Debug, Default)]
 #[repr(C)]
 pub struct ProgramHeader64 {
-    type_: Type_,
-    flags: Flags,
-    offset: u64,
-    virtual_addr: u64,
-    physical_addr: u64,
-    file_size: u64,
-    mem_size: u64,
-    align: u64,
+    pub type_: Type_,
+    pub flags: Flags,
+    pub offset: u64,
+    pub virtual_addr: u64,
+    pub physical_addr: u64,
+    pub file_size: u64,
+    pub mem_size: u64,
+    pub align: u64,
 }
 
 unsafe impl Pod for ProgramHeader64 {}
