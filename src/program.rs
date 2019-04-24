@@ -13,7 +13,10 @@ pub fn parse_program_header<'a>(input: &'a [u8],
                                 index: u16)
                                 -> Result<ProgramHeader<'a>, &'static str> {
     let pt2 = &header.pt2;
-    assert!(index < pt2.ph_count() && pt2.ph_offset() > 0 && pt2.ph_entry_size() > 0);
+    if !(index < pt2.ph_count() && pt2.ph_offset() > 0 && pt2.ph_entry_size() > 0) {
+        return Err("There are no program headers in this file")
+    }
+
     let start = pt2.ph_offset() as usize + index as usize * pt2.ph_entry_size() as usize;
     let end = start + pt2.ph_entry_size() as usize;
 
