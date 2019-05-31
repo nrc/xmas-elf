@@ -194,7 +194,7 @@ macro_rules! ph_impl {
 ph_impl!(ProgramHeader32);
 ph_impl!(ProgramHeader64);
 
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub struct Flags(pub u32);
 
 impl Flags {

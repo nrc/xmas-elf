@@ -243,7 +243,7 @@ impl fmt::Debug for Data_ {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Data {
     None,
     LittleEndian,
@@ -280,7 +280,7 @@ impl fmt::Debug for Version_ {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Version {
     None,
     Current,
@@ -324,7 +324,7 @@ impl fmt::Debug for OsAbi_ {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum OsAbi {
     // or None
     SystemV,
@@ -401,7 +401,7 @@ impl fmt::Debug for Machine_ {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Machine {
     None,
     Sparc,
