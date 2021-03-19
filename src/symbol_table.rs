@@ -107,7 +107,7 @@ pub trait Entry {
     }
 }
 
-impl fmt::Display for Entry {
+impl fmt::Display for dyn Entry {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(writeln!(f, "Symbol table entry:"));
         try!(writeln!(f, "    name:             {:?}", self.name()));
