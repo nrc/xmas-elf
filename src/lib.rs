@@ -47,7 +47,7 @@ pub struct ElfFile<'a> {
 
 impl<'a> ElfFile<'a> {
     pub fn new(input: &'a [u8]) -> Result<ElfFile<'a>, &'static str> {
-        let header = try!(header::parse_header(input));
+        let header = header::parse_header(input)?;
         Ok(ElfFile {
             input: input,
             header: header,
@@ -81,15 +81,15 @@ impl<'a> ElfFile<'a> {
     }
 
     pub fn get_string(&self, index: u32) -> Result<&'a str, &'static str> {
-        let header = try!(self.find_section_by_name(".strtab").ok_or("no .strtab section"));
-        if try!(header.get_type()) != sections::ShType::StrTab {
+        let header = self.find_section_by_name(".strtab").ok_or("no .strtab section")?;
+        if header.get_type()? != sections::ShType::StrTab {
             return Err("expected .strtab to be StrTab");
         }
         Ok(read_str(&header.raw_data(self)[(index as usize)..]))
     }
 
     pub fn get_dyn_string(&self, index: u32) -> Result<&'a str, &'static str> {
-        let header = try!(self.find_section_by_name(".dynstr").ok_or("no .dynstr section"));
+        let header = self.find_section_by_name(".dynstr").ok_or("no .dynstr section")?;
         Ok(read_str(&header.raw_data(self)[(index as usize)..]))
     }
 

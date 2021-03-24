@@ -55,15 +55,15 @@ pub struct Header<'a> {
 
 impl<'a> fmt::Display for Header<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(writeln!(f, "ELF header:"));
-        try!(writeln!(f, "    magic:            {:?}", self.pt1.magic));
-        try!(writeln!(f, "    class:            {:?}", self.pt1.class));
-        try!(writeln!(f, "    data:             {:?}", self.pt1.data));
-        try!(writeln!(f, "    version:          {:?}", self.pt1.version));
-        try!(writeln!(f, "    os abi:           {:?}", self.pt1.os_abi));
-        try!(writeln!(f, "    abi version:      {:?}", self.pt1.abi_version));
-        try!(writeln!(f, "    padding:          {:?}", self.pt1.padding));
-        try!(write!(f, "{}", self.pt2));
+        writeln!(f, "ELF header:")?;
+        writeln!(f, "    magic:            {:?}", self.pt1.magic)?;
+        writeln!(f, "    class:            {:?}", self.pt1.class)?;
+        writeln!(f, "    data:             {:?}", self.pt1.data)?;
+        writeln!(f, "    version:          {:?}", self.pt1.version)?;
+        writeln!(f, "    os abi:           {:?}", self.pt1.os_abi)?;
+        writeln!(f, "    abi version:      {:?}", self.pt1.abi_version)?;
+        writeln!(f, "    padding:          {:?}", self.pt1.padding)?;
+        write!(f, "{}", self.pt2)?;
         Ok(())
     }
 }
@@ -172,19 +172,19 @@ unsafe impl<P> Pod for HeaderPt2_<P> {}
 
 impl<P: fmt::Display> fmt::Display for HeaderPt2_<P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(writeln!(f, "    type:             {:?}", self.type_));
-        try!(writeln!(f, "    machine:          {:?}", self.machine));
-        try!(writeln!(f, "    version:          {}", self.version));
-        try!(writeln!(f, "    entry_point:      {}", self.entry_point));
-        try!(writeln!(f, "    ph_offset:        {}", self.ph_offset));
-        try!(writeln!(f, "    sh_offset:        {}", self.sh_offset));
-        try!(writeln!(f, "    flags:            {}", self.flags));
-        try!(writeln!(f, "    header_size:      {}", self.header_size));
-        try!(writeln!(f, "    ph_entry_size:    {}", self.ph_entry_size));
-        try!(writeln!(f, "    ph_count:         {}", self.ph_count));
-        try!(writeln!(f, "    sh_entry_size:    {}", self.sh_entry_size));
-        try!(writeln!(f, "    sh_count:         {}", self.sh_count));
-        try!(writeln!(f, "    sh_str_index:     {}", self.sh_str_index));
+        writeln!(f, "    type:             {:?}", self.type_)?;
+        writeln!(f, "    machine:          {:?}", self.machine)?;
+        writeln!(f, "    version:          {}", self.version)?;
+        writeln!(f, "    entry_point:      {}", self.entry_point)?;
+        writeln!(f, "    ph_offset:        {}", self.ph_offset)?;
+        writeln!(f, "    sh_offset:        {}", self.sh_offset)?;
+        writeln!(f, "    flags:            {}", self.flags)?;
+        writeln!(f, "    header_size:      {}", self.header_size)?;
+        writeln!(f, "    ph_entry_size:    {}", self.ph_entry_size)?;
+        writeln!(f, "    ph_count:         {}", self.ph_count)?;
+        writeln!(f, "    sh_entry_size:    {}", self.sh_entry_size)?;
+        writeln!(f, "    sh_count:         {}", self.sh_count)?;
+        writeln!(f, "    sh_str_index:     {}", self.sh_str_index)?;
         Ok(())
     }
 }
