@@ -557,7 +557,7 @@ impl NoteHeader {
 }
 
 pub fn sanity_check<'a>(header: SectionHeader<'a>, _file: &ElfFile<'a>) -> Result<(), &'static str> {
-    if try!(header.get_type()) == ShType::Null {
+    if header.get_type()? == ShType::Null {
         return Ok(());
     }
     // TODO

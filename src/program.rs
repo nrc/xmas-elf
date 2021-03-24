@@ -302,7 +302,7 @@ pub fn sanity_check<'a>(ph: ProgramHeader<'a>, elf_file: &ElfFile<'a>) -> Result
                    "program header size mismatch");
             check!(((ph.offset + ph.file_size) as usize) < elf_file.input.len(),
                    "entry point out of range");
-            check!(try!(ph.get_type()) != Type::ShLib, "Shouldn't use ShLib");
+            check!(ph.get_type()? != Type::ShLib, "Shouldn't use ShLib");
             if ph.align > 1 {
                 check!(ph.virtual_addr % ph.align == ph.offset % ph.align,
                        "Invalid combination of virtual_addr, offset, and align");
@@ -313,7 +313,7 @@ pub fn sanity_check<'a>(ph: ProgramHeader<'a>, elf_file: &ElfFile<'a>) -> Result
                    "program header size mismatch");
             check!(((ph.offset + ph.file_size) as usize) < elf_file.input.len(),
                    "entry point out of range");
-            check!(try!(ph.get_type()) != Type::ShLib, "Shouldn't use ShLib");
+            check!(ph.get_type()? != Type::ShLib, "Shouldn't use ShLib");
             if ph.align > 1 {
                 // println!("{} {} {}", ph.virtual_addr, ph.offset, ph.align);
                 check!(ph.virtual_addr % ph.align == ph.offset % ph.align,
