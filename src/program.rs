@@ -176,15 +176,15 @@ macro_rules! ph_impl {
 
         impl fmt::Display for $ph {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                try!(writeln!(f, "Program header:"));
-                try!(writeln!(f, "    type:             {:?}", self.get_type()));
-                try!(writeln!(f, "    flags:            {}", self.flags));
-                try!(writeln!(f, "    offset:           {:#x}", self.offset));
-                try!(writeln!(f, "    virtual address:  {:#x}", self.virtual_addr));
-                try!(writeln!(f, "    physical address: {:#x}", self.physical_addr));
-                try!(writeln!(f, "    file size:        {:#x}", self.file_size));
-                try!(writeln!(f, "    memory size:      {:#x}", self.mem_size));
-                try!(writeln!(f, "    align:            {:#x}", self.align));
+                writeln!(f, "Program header:")?;
+                writeln!(f, "    type:             {:?}", self.get_type())?;
+                writeln!(f, "    flags:            {}", self.flags)?;
+                writeln!(f, "    offset:           {:#x}", self.offset)?;
+                writeln!(f, "    virtual address:  {:#x}", self.virtual_addr)?;
+                writeln!(f, "    physical address: {:#x}", self.physical_addr)?;
+                writeln!(f, "    file size:        {:#x}", self.file_size)?;
+                writeln!(f, "    memory size:      {:#x}", self.mem_size)?;
+                writeln!(f, "    align:            {:#x}", self.align)?;
                 Ok(())
             }
         }
