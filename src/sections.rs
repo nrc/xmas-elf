@@ -42,7 +42,7 @@ pub fn parse_section_header<'a>(input: &'a [u8],
     })
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SectionIter<'b, 'a: 'b> {
     pub file: &'b ElfFile<'a>,
     pub next_index: u16,
