@@ -228,6 +228,14 @@ impl fmt::LowerHex for Flags {
     }
 }
 
+impl fmt::UpperHex for Flags {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let val = self.0;
+
+        write!(f, "{:#X}", val)
+    }
+}
+
 #[derive(Copy, Clone, Default)]
 pub struct Type_(u32);
 
