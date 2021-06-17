@@ -31,7 +31,7 @@ pub fn parse_program_header<'a>(input: &'a [u8],
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ProgramIter<'b, 'a: 'b> {
     pub file: &'b ElfFile<'a>,
     pub next_index: u16,
