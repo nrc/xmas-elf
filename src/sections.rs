@@ -309,9 +309,9 @@ impl ShType_ {
             16 => Ok(ShType::PreInitArray),
             17 => Ok(ShType::Group),
             18 => Ok(ShType::SymTabShIndex),
-            st if st >= SHT_LOOS && st <= SHT_HIOS => Ok(ShType::OsSpecific(st)),
-            st if st >= SHT_LOPROC && st <= SHT_HIPROC => Ok(ShType::ProcessorSpecific(st)),
-            st if st >= SHT_LOUSER && st <= SHT_HIUSER => Ok(ShType::User(st)),
+            st if (SHT_LOOS..=SHT_HIOS).contains(&st) => Ok(ShType::OsSpecific(st)),
+            st if (SHT_LOPROC..=SHT_HIPROC).contains(&st) => Ok(ShType::ProcessorSpecific(st)),
+            st if (SHT_LOUSER..=SHT_HIUSER).contains(&st) => Ok(ShType::User(st)),
             _ => Err("Invalid sh type"),
         }
     }
@@ -429,8 +429,8 @@ impl CompressionType_ {
     fn as_compression_type(&self) -> Result<CompressionType, &'static str> {
         match self.0 {
             1 => Ok(CompressionType::Zlib),
-            ct if ct >= COMPRESS_LOOS && ct <= COMPRESS_HIOS => Ok(CompressionType::OsSpecific(ct)),
-            ct if ct >= COMPRESS_LOPROC && ct <= COMPRESS_HIPROC => {
+            ct if (COMPRESS_LOOS..=COMPRESS_HIOS).contains(&ct) => Ok(CompressionType::OsSpecific(ct)),
+            ct if (COMPRESS_LOPROC..=COMPRESS_HIPROC).contains(&ct) => {
                 Ok(CompressionType::ProcessorSpecific(ct))
             }
             _ => Err("Invalid compression type"),
