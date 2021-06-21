@@ -49,8 +49,8 @@ impl<'a> ElfFile<'a> {
     pub fn new(input: &'a [u8]) -> Result<ElfFile<'a>, &'static str> {
         let header = header::parse_header(input)?;
         Ok(ElfFile {
-            input: input,
-            header: header,
+            input,
+            header,
         })
     }
 

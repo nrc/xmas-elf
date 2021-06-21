@@ -139,8 +139,8 @@ impl<'a> SectionHeader<'a> {
                     let flags: &'a u32 = mem::transmute(&data[0]);
                     let indicies: &'a [u32] = read_array(&data[4..]);
                     SectionData::Group {
-                        flags: flags,
-                        indicies: indicies,
+                        flags,
+                        indicies,
                     }
                 }
             }
