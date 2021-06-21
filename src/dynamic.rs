@@ -122,8 +122,8 @@ macro_rules! impls {
                     33 => Ok(Tag::PreInitArraySize),
                     34 => Ok(Tag::SymTabShIndex),
                     0x6ffffffb => Ok(Tag::Flags1),
-                    t if t >= 0x6000000D && t <= 0x6fffffff => Ok(Tag::OsSpecific(t)),
-                    t if t >= 0x70000000 && t <= 0x7fffffff => Ok(Tag::ProcessorSpecific(t)),
+                    t if (0x6000000D..0x70000000).contains(&t) => Ok(Tag::OsSpecific(t)),
+                    t if (0x70000000..0x80000000).contains(&t) => Ok(Tag::ProcessorSpecific(t)),
                     _ => Err("Invalid tag value"),
                 }
             }
