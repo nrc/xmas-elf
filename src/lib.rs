@@ -151,8 +151,8 @@ impl<'a> Extensions<'a> for ElfFile<'a> {
 
     fn get_gnu_debuglink(&self) -> Option<(&'a str, u32)> {
         self.find_section_by_name(".gnu_debuglink")
-            .map(|header| header.raw_data(self))
-            .map(|data| {
+            .map(|header| {
+                let data = header.raw_data(self);
                 let file = read_str(data);
                 // Round up to the nearest multiple of 4.
                 let checksum_pos = ((file.len() + 4) / 4) * 4;
