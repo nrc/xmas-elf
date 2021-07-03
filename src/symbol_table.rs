@@ -4,7 +4,6 @@ use sections;
 use zero::Pod;
 
 use core::fmt;
-use core::mem;
 
 #[derive(Debug)]
 #[repr(C)]
@@ -156,7 +155,13 @@ pub enum Visibility {
 
 impl Visibility_ {
     pub fn as_visibility(self) -> Visibility {
-        unsafe { mem::transmute(self.0 & 0x3) }
+        match self.0 & 0x3 {
+            x if x == Visibility::Default as _ => Visibility::Default,
+            x if x == Visibility::Internal as _ => Visibility::Internal,
+            x if x == Visibility::Hidden as _ => Visibility::Hidden,
+            x if x == Visibility::Protected as _ => Visibility::Protected,
+            _ => unreachable!(),
+        }
     }
 }
 
