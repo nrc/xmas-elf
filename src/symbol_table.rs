@@ -183,8 +183,8 @@ impl Binding_ {
             0 => Ok(Binding::Local),
             1 => Ok(Binding::Global),
             2 => Ok(Binding::Weak),
-            b if b >= 10 && b <= 12 => Ok(Binding::OsSpecific(b)),
-            b if b >= 13 && b <= 15 => Ok(Binding::ProcessorSpecific(b)),
+            b if (10..=12).contains(&b) => Ok(Binding::OsSpecific(b)),
+            b if (13..=15).contains(&b) => Ok(Binding::ProcessorSpecific(b)),
             _ => Err("Invalid value for binding"),
         }
     }
@@ -217,8 +217,8 @@ impl Type_ {
             4 => Ok(Type::File),
             5 => Ok(Type::Common),
             6 => Ok(Type::Tls),
-            b if b >= 10 && b <= 12 => Ok(Type::OsSpecific(b)),
-            b if b >= 13 && b <= 15 => Ok(Type::ProcessorSpecific(b)),
+            b if (10..=12).contains(&b) => Ok(Type::OsSpecific(b)),
+            b if (13..=15).contains(&b) => Ok(Type::ProcessorSpecific(b)),
             _ => Err("Invalid value for type"),
         }
     }

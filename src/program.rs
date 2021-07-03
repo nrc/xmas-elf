@@ -266,8 +266,8 @@ impl Type_ {
             6 => Ok(Type::Phdr),
             7 => Ok(Type::Tls),
             TYPE_GNU_RELRO => Ok(Type::GnuRelro),
-            t if t >= TYPE_LOOS && t <= TYPE_HIOS => Ok(Type::OsSpecific(t)),
-            t if t >= TYPE_LOPROC && t <= TYPE_HIPROC => Ok(Type::ProcessorSpecific(t)),
+            t if (TYPE_LOOS..=TYPE_HIOS).contains(&t) => Ok(Type::OsSpecific(t)),
+            t if (TYPE_LOPROC..=TYPE_HIPROC).contains(&t) => Ok(Type::ProcessorSpecific(t)),
             _ => Err("Invalid type"),
         }
     }
