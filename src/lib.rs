@@ -26,6 +26,7 @@ extern crate zero;
 
 pub mod header;
 pub mod sections;
+pub mod error;
 pub mod program;
 pub mod symbol_table;
 pub mod dynamic;
