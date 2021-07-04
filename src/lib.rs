@@ -26,7 +26,7 @@ extern crate zero;
 
 pub mod header;
 pub mod sections;
-pub mod error;
+mod error;
 pub mod program;
 pub mod symbol_table;
 pub mod dynamic;
@@ -36,6 +36,8 @@ use header::Header;
 use sections::{SectionHeader, SectionIter};
 use program::{ProgramHeader, ProgramIter};
 use zero::{read, read_str};
+
+pub use error::Error;
 
 pub type P32 = u32;
 pub type P64 = u64;
