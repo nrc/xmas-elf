@@ -53,7 +53,7 @@ impl<'a> ElfFile<'a> {
         header::parse_header(input).map(|header| ElfFile {input, header})
     }
 
-    pub fn section_header(&self, index: u16) -> Result<SectionHeader<'a>, &'static str> {
+    pub fn section_header(&self, index: u16) -> Result<SectionHeader<'a>, Error> {
         sections::parse_section_header(self.input, self.header, index)
     }
 
@@ -75,7 +75,7 @@ impl<'a> ElfFile<'a> {
         }
     }
 
-    pub fn get_shstr(&self, index: u32) -> Result<&'a str, &'static str> {
+    pub fn get_shstr(&self, index: u32) -> Result<&'a str, Error> {
         self.get_shstr_table().map(|shstr_table| read_str(&shstr_table[(index as usize)..]))
     }
 
@@ -106,7 +106,7 @@ impl<'a> ElfFile<'a> {
         None
     }
 
-    fn get_shstr_table(&self) -> Result<&'a [u8], &'static str> {
+    fn get_shstr_table(&self) -> Result<&'a [u8], Error> {
         // TODO cache this?
         let header = self.section_header(self.header.pt2.sh_str_index());
         header.map(|h| &self.input[(h.offset() as usize)..])

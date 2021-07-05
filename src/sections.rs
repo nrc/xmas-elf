@@ -16,11 +16,12 @@ use zero::{read, read_array, read_str, read_strs_to_null, StrReaderIterator, Pod
 use symbol_table;
 use dynamic::Dynamic;
 use hash::HashTable;
+use crate::Error;
 
 pub fn parse_section_header<'a>(input: &'a [u8],
                                 header: Header<'a>,
                                 index: u16)
-                                -> Result<SectionHeader<'a>, &'static str> {
+                                -> Result<SectionHeader<'a>, Error> {
     // Trying to get index 0 (SHN_UNDEF) is also probably an error, but it is a legitimate section.
     assert!(index < SHN_LORESERVE,
             "Attempt to get section for a reserved index");
