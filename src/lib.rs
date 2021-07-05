@@ -5,14 +5,9 @@
 
 // TODO move to a module
 macro_rules! check {
-    ($e:expr) => {
+    ($e:expr, $err: expr) => {
         if !$e {
-            return Err("");
-        }
-    };
-    ($e:expr, $msg: expr) => {
-        if !$e {
-            return Err($msg);
+            return Err($err);
         }
     };
 }

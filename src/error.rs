@@ -9,6 +9,12 @@ pub enum Error {
     InvalidClass,
     /// The section type is invalid.
     InvalidSectionType,
+    /// The segment type is invalid.
+    InvalidSegmentType,
+    /// The version of the given ELF file is invalid.
+    InvalidVersion,
+    /// The data format of the given ELF file is invalid.
+    InvalidDataFormat,
     /// The length of the given ELF file is too short.
     FileIsTooShort,
     /// Program header is not found.
@@ -26,6 +32,16 @@ pub enum Error {
     /// - `SHN_ABS`
     /// - `SHN_COMMON`
     SectionHeaderIndexIsReserved,
+    /// The size of each program header recorded in the file header is different from the actual
+    /// size.
+    ProgramHeaderSizeMismatch,
+    /// The class specified in the file header is different from the actual class.
+    ClassMismatch,
+    /// The segment whose type is `PT_SHLIB` should not be used.
+    UseOfShLib,
+    /// The alignments of the virtual address, offset, and align recorded in the program header are
+    /// the invalid combination.
+    MisalignedAddressAndOffset,
 }
 
 impl fmt::Display for Error {
@@ -37,6 +53,9 @@ impl fmt::Display for Error {
                 Self::InvalidMagic => "The magic number of the given ELF file is invalid.",
                 Self::InvalidClass => "The class of the given ELF file is invalid.",
                 Self::InvalidSectionType => "The section type is invalid.",
+                Self::InvalidSegmentType => "The segment type is invalid.",
+                Self::InvalidVersion => "The version of the given ELF file is invalid.",
+                Self::InvalidDataFormat => "The data format of the given ELF file is invalid.",
                 Self::FileIsTooShort => "The length of the given ELF file is too short.",
                 Self::ProgramHeaderNotFound => "The program header is not found.",
                 Self::SymtabShndxNotFound => "The `.symtab_shndx` section is not found.",
@@ -44,6 +63,10 @@ impl fmt::Display for Error {
                 Self::DynstrNotFound => "The `.dynstr` section is not found.",
                 Self::SectionIsNull => "The section type is `NULL`.",
                 Self::SectionHeaderIndexIsReserved => "The section header index is reserved.",
+                Self::ProgramHeaderSizeMismatch => "The size of each program header recorded in the file header is different from the actual size.",
+                Self::ClassMismatch => "The class specified in the file header is different from the actual class.",
+                Self::UseOfShLib => "The segment whose type is `PT_SHLIB` should not be used.",
+                Self::MisalignedAddressAndOffset => "The alignments of the virtual address, offset, and align recorded in the program header are the invalid combination.",
             }
         )
     }
