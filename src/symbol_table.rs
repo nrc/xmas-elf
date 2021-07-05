@@ -71,7 +71,7 @@ pub trait Entry {
         Binding_(self.info() >> 4).as_binding()
     }
 
-    fn get_type(&self) -> Result<Type, &'static str> {
+    fn get_type(&self) -> Result<Type, Error> {
         Type_(self.info() & 0xf).as_type()
     }
 
@@ -209,7 +209,7 @@ pub enum Type {
 }
 
 impl Type_ {
-    pub fn as_type(self) -> Result<Type, &'static str> {
+    pub fn as_type(self) -> Result<Type, Error> {
         match self.0 {
             0 => Ok(Type::NoType),
             1 => Ok(Type::Object),
@@ -220,7 +220,7 @@ impl Type_ {
             6 => Ok(Type::Tls),
             b if (10..=12).contains(&b) => Ok(Type::OsSpecific(b)),
             b if (13..=15).contains(&b) => Ok(Type::ProcessorSpecific(b)),
-            _ => Err("Invalid value for type"),
+            _ => Err(Error::InvalidSymbolType),
         }
     }
 }
