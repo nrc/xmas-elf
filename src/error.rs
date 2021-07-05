@@ -15,6 +15,8 @@ pub enum Error {
     InvalidVersion,
     /// The data format of the given ELF file is invalid.
     InvalidDataFormat,
+    /// The symbol's binding is invalid.
+    InvalidSymbolBinding,
     /// The length of the given ELF file is too short.
     FileIsTooShort,
     /// Program header is not found.
@@ -56,6 +58,7 @@ impl fmt::Display for Error {
                 Self::InvalidSegmentType => "The segment type is invalid.",
                 Self::InvalidVersion => "The version of the given ELF file is invalid.",
                 Self::InvalidDataFormat => "The data format of the given ELF file is invalid.",
+                Self::InvalidSymbolBinding => "The symbol's binding is invalid.",
                 Self::FileIsTooShort => "The length of the given ELF file is too short.",
                 Self::ProgramHeaderNotFound => "The program header is not found.",
                 Self::SymtabShndxNotFound => "The `.symtab_shndx` section is not found.",

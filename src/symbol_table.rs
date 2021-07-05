@@ -67,7 +67,7 @@ pub trait Entry {
         self.other().as_visibility()
     }
 
-    fn get_binding(&self) -> Result<Binding, &'static str> {
+    fn get_binding(&self) -> Result<Binding, Error> {
         Binding_(self.info() >> 4).as_binding()
     }
 
@@ -179,14 +179,14 @@ pub enum Binding {
 }
 
 impl Binding_ {
-    pub fn as_binding(self) -> Result<Binding, &'static str> {
+    pub fn as_binding(self) -> Result<Binding, Error> {
         match self.0 {
             0 => Ok(Binding::Local),
             1 => Ok(Binding::Global),
             2 => Ok(Binding::Weak),
             b if (10..=12).contains(&b) => Ok(Binding::OsSpecific(b)),
             b if (13..=15).contains(&b) => Ok(Binding::ProcessorSpecific(b)),
-            _ => Err("Invalid value for binding"),
+            _ => Err(Error::InvalidSymbolBinding),
         }
     }
 }
