@@ -1,4 +1,5 @@
 use ElfFile;
+use crate::Error;
 use sections;
 
 use zero::Pod;
@@ -60,7 +61,7 @@ pub trait Entry {
     fn value(&self) -> u64;
     fn size(&self) -> u64;
 
-    fn get_name<'a>(&'a self, elf_file: &ElfFile<'a>) -> Result<&'a str, &'static str>;
+    fn get_name<'a>(&'a self, elf_file: &ElfFile<'a>) -> Result<&'a str, Error>;
 
     fn get_other(&self) -> Visibility {
         self.other().as_visibility()
@@ -77,7 +78,7 @@ pub trait Entry {
     fn get_section_header<'a>(&'a self,
                               elf_file: &ElfFile<'a>,
                               self_index: usize)
-                              -> Result<sections::SectionHeader<'a>, &'static str> {
+                              -> Result<sections::SectionHeader<'a>, Error> {
         match self.shndx() {
             sections::SHN_XINDEX => {
                 // TODO factor out distinguished section names into sections consts
@@ -92,15 +93,15 @@ pub trait Entry {
                         assert_ne!(index, sections::SHN_UNDEF);
                         elf_file.section_header(index)
                     } else {
-                        Err("Expected SymTabShIndex")
+                        unreachable!("Expected SymTabShIndex")
                     }
                 } else {
-                    Err("no .symtab_shndx section")
+                    Err(Error::SymtabShndxNotFound)
                 }
             }
             sections::SHN_UNDEF |
             sections::SHN_ABS |
-            sections::SHN_COMMON => Err("Reserved section header index"),
+            sections::SHN_COMMON => Err(Error::SectionHeaderIndexIsReserved),
             i => elf_file.section_header(i),
         }
     }
@@ -123,7 +124,7 @@ impl fmt::Display for dyn Entry {
 macro_rules! impl_entry {
     ($name: ident with ElfFile::$strfunc: ident) => {
         impl Entry for $name {
-            fn get_name<'a>(&'a self, elf_file: &ElfFile<'a>) -> Result<&'a str, &'static str> {
+            fn get_name<'a>(&'a self, elf_file: &ElfFile<'a>) -> Result<&'a str, Error> {
                 elf_file.$strfunc(self.name())
             }
 

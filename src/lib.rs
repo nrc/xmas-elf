@@ -64,7 +64,7 @@ impl<'a> ElfFile<'a> {
         }
     }
 
-    pub fn program_header(&self, index: u16) -> Result<ProgramHeader<'a>, &'static str> {
+    pub fn program_header(&self, index: u16) -> Result<ProgramHeader<'a>, Error> {
         program::parse_program_header(self.input, self.header, index)
     }
 
@@ -79,16 +79,16 @@ impl<'a> ElfFile<'a> {
         self.get_shstr_table().map(|shstr_table| read_str(&shstr_table[(index as usize)..]))
     }
 
-    pub fn get_string(&self, index: u32) -> Result<&'a str, &'static str> {
-        let header = self.find_section_by_name(".strtab").ok_or("no .strtab section")?;
+    pub fn get_string(&self, index: u32) -> Result<&'a str, Error> {
+        let header = self.find_section_by_name(".strtab").ok_or(Error::StrtabNotFound)?;
         if header.get_type()? != sections::ShType::StrTab {
-            return Err("expected .strtab to be StrTab");
+            unreachable!("expected .strtab to be StrTab");
         }
         Ok(read_str(&header.raw_data(self)[(index as usize)..]))
     }
 
-    pub fn get_dyn_string(&self, index: u32) -> Result<&'a str, &'static str> {
-        let header = self.find_section_by_name(".dynstr").ok_or("no .dynstr section")?;
+    pub fn get_dyn_string(&self, index: u32) -> Result<&'a str, Error> {
+        let header = self.find_section_by_name(".dynstr").ok_or(Error::DynstrNotFound)?;
         Ok(read_str(&header.raw_data(self)[(index as usize)..]))
     }
 

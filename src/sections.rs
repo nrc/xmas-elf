@@ -95,18 +95,18 @@ macro_rules! getter {
 
 impl<'a> SectionHeader<'a> {
     // Note that this function is O(n) in the length of the name.
-    pub fn get_name(&self, elf_file: &ElfFile<'a>) -> Result<&'a str, &'static str> {
+    pub fn get_name(&self, elf_file: &ElfFile<'a>) -> Result<&'a str, Error> {
         self.get_type().and_then(|typ| match typ {
-            ShType::Null => Err("Attempt to get name of null section"),
+            ShType::Null => Err(Error::SectionIsNull),
             _ => elf_file.get_shstr(self.name()),
         })
     }
 
-    pub fn get_type(&self) -> Result<ShType, &'static str> {
+    pub fn get_type(&self) -> Result<ShType, Error> {
         self.type_().as_sh_type()
     }
 
-    pub fn get_data(&self, elf_file: &ElfFile<'a>) -> Result<SectionData<'a>, &'static str> {
+    pub fn get_data(&self, elf_file: &ElfFile<'a>) -> Result<SectionData<'a>, Error> {
         macro_rules! array_data {
             ($data32: ident, $data64: ident) => {{
                 let data = self.raw_data(elf_file);
@@ -291,7 +291,7 @@ pub enum ShType {
 }
 
 impl ShType_ {
-    fn as_sh_type(self) -> Result<ShType, &'static str> {
+    fn as_sh_type(self) -> Result<ShType, Error> {
         match self.0 {
             0 => Ok(ShType::Null),
             1 => Ok(ShType::ProgBits),
@@ -314,7 +314,7 @@ impl ShType_ {
             st if (SHT_LOOS..=SHT_HIOS).contains(&st) => Ok(ShType::OsSpecific(st)),
             st if (SHT_LOPROC..=SHT_HIPROC).contains(&st) => Ok(ShType::ProcessorSpecific(st)),
             st if (SHT_LOUSER..=SHT_HIUSER).contains(&st) => Ok(ShType::User(st)),
-            _ => Err("Invalid sh type"),
+            _ => Err(Error::InvalidSectionType),
         }
     }
 }
@@ -558,7 +558,7 @@ impl NoteHeader {
     }
 }
 
-pub fn sanity_check<'a>(header: SectionHeader<'a>, _file: &ElfFile<'a>) -> Result<(), &'static str> {
+pub fn sanity_check<'a>(header: SectionHeader<'a>, _file: &ElfFile<'a>) -> Result<(), Error> {
     if header.get_type()? == ShType::Null {
         return Ok(());
     }

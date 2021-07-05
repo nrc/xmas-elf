@@ -3,6 +3,7 @@ use zero::{read, read_array, Pod};
 use header::{Class, Header};
 use dynamic::Dynamic;
 use sections::NoteHeader;
+use crate::Error;
 
 use core::mem;
 use core::fmt;
@@ -11,10 +12,10 @@ use core::fmt;
 pub fn parse_program_header<'a>(input: &'a [u8],
                                 header: Header<'a>,
                                 index: u16)
-                                -> Result<ProgramHeader<'a>, &'static str> {
+                                -> Result<ProgramHeader<'a>, Error> {
     let pt2 = &header.pt2;
     if !(index < pt2.ph_count() && pt2.ph_offset() > 0 && pt2.ph_entry_size() > 0) {
-        return Err("There are no program headers in this file")
+        return Err(Error::ProgramHeaderNotFound)
     }
 
     let start = pt2.ph_offset() as usize + index as usize * pt2.ph_entry_size() as usize;
