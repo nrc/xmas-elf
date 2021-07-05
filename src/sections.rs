@@ -173,7 +173,7 @@ impl<'a> SectionHeader<'a> {
     }
 
     #[cfg(feature = "compression")]
-    pub fn decompressed_data(&self, elf_file: &ElfFile<'a>) -> Result<Cow<'a, [u8]>, &'static str> {
+    pub fn decompressed_data(&self, elf_file: &ElfFile<'a>) -> Result<Cow<'a, [u8]>, Error> {
         let raw = self.raw_data(elf_file);
         Ok(if (self.flags() & SHF_COMPRESSED) == 0 {
             Cow::Borrowed(raw)
@@ -181,14 +181,14 @@ impl<'a> SectionHeader<'a> {
             let (compression_type, size, compressed_data) = match elf_file.header.pt1.class() {
                 Class::ThirtyTwo => {
                     if raw.len() < 12 {
-                        return Err("Unexpected EOF in compressed section");
+                        return Err(Error::SectionIsTooShort);
                     }
                     let header: &'a CompressionHeader32 = read(&raw[..12]);
                     (header.type_.as_compression_type(), header.size as usize, &raw[12..])
                 },
                 Class::SixtyFour => {
                     if raw.len() < 24 {
-                        return Err("Unexpected EOF in compressed section");
+                        return Err(Error::SectionIsTooShort);
                     }
                     let header: &'a CompressionHeader64 = read(&raw[..24]);
                     (header.type_.as_compression_type(), header.size as usize, &raw[24..])
@@ -197,14 +197,14 @@ impl<'a> SectionHeader<'a> {
             };
 
             if compression_type != Ok(CompressionType::Zlib) {
-                return Err("Unknown compression type");
+                return Err(Error::InvalidCompressionType);
             }
 
             let mut decompressed = Vec::with_capacity(size);
             let mut decompress = Decompress::new(true);
             if let Err(_) = decompress.decompress_vec(
                 compressed_data, &mut decompressed, FlushDecompress::Finish) {
-                return Err("Decompression error");
+                return Err(Error::DecompressionError);
             }
             Cow::Owned(decompressed)
         })

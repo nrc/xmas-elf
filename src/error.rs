@@ -23,6 +23,8 @@ pub enum Error {
     InvalidCompressionType,
     /// The length of the given ELF file is too short.
     FileIsTooShort,
+    /// The length of the section is too short.
+    SectionIsTooShort,
     /// Program header is not found.
     ProgramHeaderNotFound,
     /// The `.symtab_shndx` section is not found.
@@ -48,6 +50,8 @@ pub enum Error {
     /// The alignments of the virtual address, offset, and align recorded in the program header are
     /// the invalid combination.
     MisalignedAddressAndOffset,
+    /// Failed to decompress the section.
+    DecompressionError,
 }
 
 impl fmt::Display for Error {
@@ -66,6 +70,7 @@ impl fmt::Display for Error {
                 Self::InvalidSymbolType => "The symbol's type is invalid.",
                 Self::InvalidCompressionType => "The compression type is invalid.",
                 Self::FileIsTooShort => "The length of the given ELF file is too short.",
+                Self::SectionIsTooShort => "The length of the section is too short.",
                 Self::ProgramHeaderNotFound => "The program header is not found.",
                 Self::SymtabShndxNotFound => "The `.symtab_shndx` section is not found.",
                 Self::StrtabNotFound => "The `.strtab` section is not found.",
@@ -76,6 +81,7 @@ impl fmt::Display for Error {
                 Self::ClassMismatch => "The class specified in the file header is different from the actual class.",
                 Self::UseOfShLib => "The segment whose type is `PT_SHLIB` should not be used.",
                 Self::MisalignedAddressAndOffset => "The alignments of the virtual address, offset, and align recorded in the program header are the invalid combination.",
+                Self::DecompressionError => "Failed to decompress the section.",
             }
         )
     }
