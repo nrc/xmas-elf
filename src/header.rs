@@ -83,6 +83,8 @@ pub struct HeaderPt1 {
     pub padding: [u8; 7],
 }
 
+const _CONST_CHECK_HEADER_PT1_SIZE: [(); !(mem::size_of::<HeaderPt1>() == 16) as usize] = [];
+
 unsafe impl Pod for HeaderPt1 {}
 
 impl HeaderPt1 {
@@ -428,7 +430,6 @@ pub enum Machine {
 // TODO any more constants that need to go in here?
 
 pub fn sanity_check(file: &ElfFile) -> Result<(), Error> {
-    // check!(mem::size_of::<HeaderPt1>() == 16);
     check!(file.header.pt1.magic == MAGIC, Error::InvalidMagic);
     let pt2 = &file.header.pt2;
     check!(mem::size_of::<HeaderPt1>() + pt2.size() == pt2.header_size() as usize, Error::ProgramHeaderSizeMismatch);
