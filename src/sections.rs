@@ -428,14 +428,14 @@ pub enum CompressionType {
 }
 
 impl CompressionType_ {
-    fn as_compression_type(&self) -> Result<CompressionType, &'static str> {
+    fn as_compression_type(&self) -> Result<CompressionType, Error> {
         match self.0 {
             1 => Ok(CompressionType::Zlib),
             ct if (COMPRESS_LOOS..=COMPRESS_HIOS).contains(&ct) => Ok(CompressionType::OsSpecific(ct)),
             ct if (COMPRESS_LOPROC..=COMPRESS_HIPROC).contains(&ct) => {
                 Ok(CompressionType::ProcessorSpecific(ct))
             }
-            _ => Err("Invalid compression type"),
+            _ => Err(Error::InvalidCompressionType),
         }
     }
 }

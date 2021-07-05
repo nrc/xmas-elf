@@ -19,6 +19,8 @@ pub enum Error {
     InvalidSymbolBinding,
     /// The symbol's type is invalid.
     InvalidSymbolType,
+    /// The compression type is invalid.
+    InvalidCompressionType,
     /// The length of the given ELF file is too short.
     FileIsTooShort,
     /// Program header is not found.
@@ -62,6 +64,7 @@ impl fmt::Display for Error {
                 Self::InvalidDataFormat => "The data format of the given ELF file is invalid.",
                 Self::InvalidSymbolBinding => "The symbol's binding is invalid.",
                 Self::InvalidSymbolType => "The symbol's type is invalid.",
+                Self::InvalidCompressionType => "The compression type is invalid.",
                 Self::FileIsTooShort => "The length of the given ELF file is too short.",
                 Self::ProgramHeaderNotFound => "The program header is not found.",
                 Self::SymtabShndxNotFound => "The `.symtab_shndx` section is not found.",
