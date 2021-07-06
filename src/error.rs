@@ -21,7 +21,7 @@ pub enum Error {
     InvalidSymbolType,
     /// The compression type is invalid.
     InvalidCompressionType,
-    /// The tag of this dynamic link information is invalid.
+    /// The tag of the dynamic link information is invalid.
     InvalidTag,
     /// The length of the given ELF file is too short.
     FileTooShort,
@@ -54,9 +54,9 @@ pub enum Error {
     MisalignedAddressAndOffset,
     /// Failed to decompress the section.
     DecompressionError,
-    /// This dynamic link information does not contain a value, but a pointer.
+    /// The dynamic link information does not contain a value, but a pointer.
     ValueNotContained,
-    /// This dynamic link information does not contain a pointer, but a value.
+    /// The dynamic link information does not contain a pointer, but a value.
     PointerNotContained,
 }
 
@@ -75,7 +75,7 @@ impl fmt::Display for Error {
                 Self::InvalidSymbolBinding => "The symbol's binding is invalid.",
                 Self::InvalidSymbolType => "The symbol's type is invalid.",
                 Self::InvalidCompressionType => "The compression type is invalid.",
-                Self::InvalidTag => "The tag of this dynamic link information is invalid.",
+                Self::InvalidTag => "The tag of the dynamic link information is invalid.",
                 Self::FileTooShort => "The length of the given ELF file is too short.",
                 Self::SectionTooShort => "The length of the section is too short.",
                 Self::ProgramHeaderNotFound => "The program header is not found.",
@@ -89,8 +89,8 @@ impl fmt::Display for Error {
                 Self::UseOfShLib => "The segment whose type is `PT_SHLIB` should not be used.",
                 Self::MisalignedAddressAndOffset => "The alignments of the virtual address, offset, and align recorded in the program header are the invalid combination.",
                 Self::DecompressionError => "Failed to decompress the section.",
-                Self::ValueNotContained => "This dynamic link information does not contain a value, but a pointer.",
-                Self::PointerNotContained => "This dynamic link information does not contain a pointer, but a value.",
+                Self::ValueNotContained => "The dynamic link information does not contain a value, but a pointer.",
+                Self::PointerNotContained => "The dynamic link information does not contain a pointer, but a value.",
             }
         )
     }
