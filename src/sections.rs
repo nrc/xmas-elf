@@ -181,14 +181,14 @@ impl<'a> SectionHeader<'a> {
             let (compression_type, size, compressed_data) = match elf_file.header.pt1.class() {
                 Class::ThirtyTwo => {
                     if raw.len() < 12 {
-                        return Err(Error::SectionIsTooShort);
+                        return Err(Error::SectionTooShort);
                     }
                     let header: &'a CompressionHeader32 = read(&raw[..12]);
                     (header.type_.as_compression_type(), header.size as usize, &raw[12..])
                 },
                 Class::SixtyFour => {
                     if raw.len() < 24 {
-                        return Err(Error::SectionIsTooShort);
+                        return Err(Error::SectionTooShort);
                     }
                     let header: &'a CompressionHeader64 = read(&raw[..24]);
                     (header.type_.as_compression_type(), header.size as usize, &raw[24..])
