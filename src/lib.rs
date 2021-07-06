@@ -76,9 +76,9 @@ impl<'a> ElfFile<'a> {
 
     pub fn get_string(&self, index: u32) -> Result<&'a str, Error> {
         let header = self.find_section_by_name(".strtab").ok_or(Error::StrtabNotFound)?;
-        if header.get_type()? != sections::ShType::StrTab {
-            unreachable!("expected .strtab to be StrTab");
-        }
+
+        assert_eq!(header.get_type()?, sections::ShType::StrTab);
+
         Ok(read_str(&header.raw_data(self)[(index as usize)..]))
     }
 
