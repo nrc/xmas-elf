@@ -1,7 +1,7 @@
 use core::fmt;
 
 /// Errors returned by the methods and functions of this crate.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Error {
     /// The magic number of the given ELF file is invalid.
     InvalidMagic,
