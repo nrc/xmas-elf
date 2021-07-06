@@ -70,7 +70,7 @@ macro_rules! impls {
                     Tag::InitArraySize | Tag::FiniArraySize | Tag::RunPath | Tag::Flags |
                     Tag::PreInitArraySize | Tag::Flags1 | Tag::OsSpecific(_) |
                     Tag::ProcessorSpecific(_) => Ok(self.un),
-                    _ => Err(Error::ValueIsNotContained),
+                    _ => Err(Error::ValueNotContained),
                 }
             }
 
@@ -80,7 +80,7 @@ macro_rules! impls {
                     Tag::Rel | Tag::Debug | Tag::JmpRel | Tag::InitArray | Tag::FiniArray |
                     Tag::PreInitArray | Tag::SymTabShIndex  | Tag::OsSpecific(_) | Tag::ProcessorSpecific(_)
                     => Ok(self.un),
-                     _ => Err(Error::PointerIsNotContained),
+                     _ => Err(Error::PointerNotContained),
                 }
             }
         }
