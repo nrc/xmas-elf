@@ -1,6 +1,7 @@
 use core::fmt;
 use {P32, P64};
 use zero::Pod;
+use crate::Error;
 
 #[derive(Debug)]
 #[repr(C)]
@@ -58,34 +59,34 @@ pub enum Tag<P> {
 macro_rules! impls {
     ($p: ident) => {
         impl Dynamic<$p> {
-            pub fn get_tag(&self) -> Result<Tag<$p>, &'static str> {
+            pub fn get_tag(&self) -> Result<Tag<$p>, Error> {
                 self.tag.as_tag()
             }
 
-            pub fn get_val(&self) -> Result<$p, &'static str> {
+            pub fn get_val(&self) -> Result<$p, Error> {
                 match self.get_tag()? {
                     Tag::Needed | Tag::PltRelSize | Tag::RelaSize | Tag::RelaEnt | Tag::StrSize |
                     Tag::SymEnt | Tag::SoName | Tag::RPath | Tag::RelSize | Tag::RelEnt | Tag::PltRel |
                     Tag::InitArraySize | Tag::FiniArraySize | Tag::RunPath | Tag::Flags |
                     Tag::PreInitArraySize | Tag::Flags1 | Tag::OsSpecific(_) |
                     Tag::ProcessorSpecific(_) => Ok(self.un),
-                    _ => Err("Invalid value"),
+                    _ => Err(Error::ValueIsNotContained),
                 }
             }
 
-            pub fn get_ptr(&self) -> Result<$p, &'static str> {
+            pub fn get_ptr(&self) -> Result<$p, Error> {
                 match self.get_tag()? {
                     Tag::Pltgot | Tag::Hash | Tag::StrTab | Tag::SymTab | Tag::Rela | Tag::Init | Tag::Fini |
                     Tag::Rel | Tag::Debug | Tag::JmpRel | Tag::InitArray | Tag::FiniArray |
                     Tag::PreInitArray | Tag::SymTabShIndex  | Tag::OsSpecific(_) | Tag::ProcessorSpecific(_)
                     => Ok(self.un),
-                     _ => Err("Invalid ptr"),
+                     _ => Err(Error::PointerIsNotContained),
                 }
             }
         }
 
         impl Tag_<$p> {
-            fn as_tag(self) -> Result<Tag<$p>, &'static str> {
+            fn as_tag(self) -> Result<Tag<$p>, Error> {
                 match self.0 {
                     0 => Ok(Tag::Null),
                     1 => Ok(Tag::Needed),
@@ -124,7 +125,7 @@ macro_rules! impls {
                     0x6ffffffb => Ok(Tag::Flags1),
                     t if (0x6000000D..0x70000000).contains(&t) => Ok(Tag::OsSpecific(t)),
                     t if (0x70000000..0x80000000).contains(&t) => Ok(Tag::ProcessorSpecific(t)),
-                    _ => Err("Invalid tag value"),
+                    _ => Err(Error::InvalidTag),
                 }
             }
         }

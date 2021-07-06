@@ -21,6 +21,8 @@ pub enum Error {
     InvalidSymbolType,
     /// The compression type is invalid.
     InvalidCompressionType,
+    /// The tag of this dynamic link information is invalid.
+    InvalidTag,
     /// The length of the given ELF file is too short.
     FileIsTooShort,
     /// The length of the section is too short.
@@ -52,6 +54,10 @@ pub enum Error {
     MisalignedAddressAndOffset,
     /// Failed to decompress the section.
     DecompressionError,
+    /// This dynamic link information does not contain a value, but a pointer.
+    ValueIsNotContained,
+    /// This dynamic link information does not contain a pointer, but a value.
+    PointerIsNotContained,
 }
 
 impl fmt::Display for Error {
@@ -69,6 +75,7 @@ impl fmt::Display for Error {
                 Self::InvalidSymbolBinding => "The symbol's binding is invalid.",
                 Self::InvalidSymbolType => "The symbol's type is invalid.",
                 Self::InvalidCompressionType => "The compression type is invalid.",
+                Self::InvalidTag => "The tag of this dynamic link information is invalid.",
                 Self::FileIsTooShort => "The length of the given ELF file is too short.",
                 Self::SectionIsTooShort => "The length of the section is too short.",
                 Self::ProgramHeaderNotFound => "The program header is not found.",
@@ -82,6 +89,8 @@ impl fmt::Display for Error {
                 Self::UseOfShLib => "The segment whose type is `PT_SHLIB` should not be used.",
                 Self::MisalignedAddressAndOffset => "The alignments of the virtual address, offset, and align recorded in the program header are the invalid combination.",
                 Self::DecompressionError => "Failed to decompress the section.",
+                Self::ValueIsNotContained => "This dynamic link information does not contain a value, but a pointer.",
+                Self::PointerIsNotContained => "This dynamic link information does not contain a pointer, but a value.",
             }
         )
     }
