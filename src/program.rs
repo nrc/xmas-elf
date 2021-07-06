@@ -308,7 +308,7 @@ pub fn sanity_check<'a>(ph: ProgramHeader<'a>, elf_file: &ElfFile<'a>) -> Result
     match ph {
         ProgramHeader::Ph32(ph) => {
             check!(mem::size_of_val(ph) == header.pt2.ph_entry_size() as usize, Error::ProgramHeaderSizeMismatch);
-            check!(((ph.offset + ph.file_size) as usize) < elf_file.input.len(), Error::FileIsTooShort);
+            check!(((ph.offset + ph.file_size) as usize) < elf_file.input.len(), Error::FileTooShort);
             check!(ph.get_type()? != Type::ShLib, Error::UseOfShLib);
             if ph.align > 1 {
                 check!(ph.virtual_addr % ph.align == ph.offset % ph.align, Error::MisalignedAddressAndOffset);
@@ -316,7 +316,7 @@ pub fn sanity_check<'a>(ph: ProgramHeader<'a>, elf_file: &ElfFile<'a>) -> Result
         }
         ProgramHeader::Ph64(ph) => {
             check!(mem::size_of_val(ph) == header.pt2.ph_entry_size() as usize, Error::ProgramHeaderSizeMismatch);
-            check!(((ph.offset + ph.file_size) as usize) < elf_file.input.len(), Error::FileIsTooShort);
+            check!(((ph.offset + ph.file_size) as usize) < elf_file.input.len(), Error::FileTooShort);
             check!(ph.get_type()? != Type::ShLib, Error::UseOfShLib);
             if ph.align > 1 {
                 // println!("{} {} {}", ph.virtual_addr, ph.offset, ph.align);

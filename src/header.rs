@@ -10,7 +10,7 @@ use zero::{read, Pod};
 pub fn parse_header<'a>(input: &'a [u8]) -> Result<Header<'a>, Error> {
     let size_pt1 = mem::size_of::<HeaderPt1>();
     if input.len() < size_pt1 {
-        return Err(Error::FileIsTooShort);
+        return Err(Error::FileTooShort);
     }
 
     let header_1: &'a HeaderPt1 = read(&input[..size_pt1]);
@@ -23,7 +23,7 @@ pub fn parse_header<'a>(input: &'a [u8]) -> Result<Header<'a>, Error> {
         Class::ThirtyTwo => {
             let size_pt2 = mem::size_of::<HeaderPt2_<P32>>();
             if input.len() < size_pt1 + size_pt2 {
-                return Err(Error::FileIsTooShort);
+                return Err(Error::FileTooShort);
             }
             let header_2: &'a HeaderPt2_<P32> =
                 read(&input[size_pt1..size_pt1 + mem::size_of::<HeaderPt2_<P32>>()]);
@@ -32,7 +32,7 @@ pub fn parse_header<'a>(input: &'a [u8]) -> Result<Header<'a>, Error> {
         Class::SixtyFour => {
             let size_pt2 = mem::size_of::<HeaderPt2_<P64>>();
             if input.len() < size_pt1 + size_pt2 {
-                return Err(Error::FileIsTooShort);
+                return Err(Error::FileTooShort);
             }
             let header_2: &'a HeaderPt2_<P64> =
                 read(&input[size_pt1..size_pt1 + mem::size_of::<HeaderPt2_<P64>>()]);
@@ -444,10 +444,10 @@ pub fn sanity_check(file: &ElfFile) -> Result<(), Error> {
 
     check!(pt2.ph_offset() + (pt2.ph_entry_size() as u64) * (pt2.ph_count() as u64) <=
            file.input.len() as u64,
-           Error::FileIsTooShort);
+           Error::FileTooShort);
     check!(pt2.sh_offset() + (pt2.sh_entry_size() as u64) * (pt2.sh_count() as u64) <=
            file.input.len() as u64,
-           Error::FileIsTooShort);
+           Error::FileTooShort);
 
     // TODO check that SectionHeader_ is the same size as sh_entry_size, depending on class
 

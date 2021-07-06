@@ -101,7 +101,7 @@ pub trait Entry {
             }
             sections::SHN_UNDEF |
             sections::SHN_ABS |
-            sections::SHN_COMMON => Err(Error::SectionHeaderIndexIsReserved),
+            sections::SHN_COMMON => Err(Error::ReservedSectionHeaderIndex),
             i => elf_file.section_header(i),
         }
     }

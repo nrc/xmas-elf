@@ -97,7 +97,7 @@ impl<'a> SectionHeader<'a> {
     // Note that this function is O(n) in the length of the name.
     pub fn get_name(&self, elf_file: &ElfFile<'a>) -> Result<&'a str, Error> {
         self.get_type().and_then(|typ| match typ {
-            ShType::Null => Err(Error::SectionIsNull),
+            ShType::Null => Err(Error::NullSection),
             _ => elf_file.get_shstr(self.name()),
         })
     }

@@ -24,9 +24,9 @@ pub enum Error {
     /// The tag of this dynamic link information is invalid.
     InvalidTag,
     /// The length of the given ELF file is too short.
-    FileIsTooShort,
+    FileTooShort,
     /// The length of the section is too short.
-    SectionIsTooShort,
+    SectionTooShort,
     /// Program header is not found.
     ProgramHeaderNotFound,
     /// The `.symtab_shndx` section is not found.
@@ -36,12 +36,12 @@ pub enum Error {
     /// The `.dynstr` section is not found.
     DynstrNotFound,
     /// The section type is `NULL`.
-    SectionIsNull,
+    NullSection,
     /// The section header index is one of the followings:
     /// - `SHN_UNDEF`
     /// - `SHN_ABS`
     /// - `SHN_COMMON`
-    SectionHeaderIndexIsReserved,
+    ReservedSectionHeaderIndex,
     /// The size of each program header recorded in the file header is different from the actual
     /// size.
     ProgramHeaderSizeMismatch,
@@ -55,9 +55,9 @@ pub enum Error {
     /// Failed to decompress the section.
     DecompressionError,
     /// This dynamic link information does not contain a value, but a pointer.
-    ValueIsNotContained,
+    ValueNotContained,
     /// This dynamic link information does not contain a pointer, but a value.
-    PointerIsNotContained,
+    PointerNotContained,
 }
 
 impl fmt::Display for Error {
@@ -76,21 +76,21 @@ impl fmt::Display for Error {
                 Self::InvalidSymbolType => "The symbol's type is invalid.",
                 Self::InvalidCompressionType => "The compression type is invalid.",
                 Self::InvalidTag => "The tag of this dynamic link information is invalid.",
-                Self::FileIsTooShort => "The length of the given ELF file is too short.",
-                Self::SectionIsTooShort => "The length of the section is too short.",
+                Self::FileTooShort => "The length of the given ELF file is too short.",
+                Self::SectionTooShort => "The length of the section is too short.",
                 Self::ProgramHeaderNotFound => "The program header is not found.",
                 Self::SymtabShndxNotFound => "The `.symtab_shndx` section is not found.",
                 Self::StrtabNotFound => "The `.strtab` section is not found.",
                 Self::DynstrNotFound => "The `.dynstr` section is not found.",
-                Self::SectionIsNull => "The section type is `NULL`.",
-                Self::SectionHeaderIndexIsReserved => "The section header index is reserved.",
+                Self::NullSection => "The section type is `NULL`.",
+                Self::ReservedSectionHeaderIndex => "The section header index is reserved.",
                 Self::ProgramHeaderSizeMismatch => "The size of each program header recorded in the file header is different from the actual size.",
                 Self::ClassMismatch => "The class specified in the file header is different from the actual class.",
                 Self::UseOfShLib => "The segment whose type is `PT_SHLIB` should not be used.",
                 Self::MisalignedAddressAndOffset => "The alignments of the virtual address, offset, and align recorded in the program header are the invalid combination.",
                 Self::DecompressionError => "Failed to decompress the section.",
-                Self::ValueIsNotContained => "This dynamic link information does not contain a value, but a pointer.",
-                Self::PointerIsNotContained => "This dynamic link information does not contain a pointer, but a value.",
+                Self::ValueNotContained => "This dynamic link information does not contain a value, but a pointer.",
+                Self::PointerNotContained => "This dynamic link information does not contain a pointer, but a value.",
             }
         )
     }
