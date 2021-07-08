@@ -1,4 +1,5 @@
 use ElfFile;
+use crate::Error;
 use sections;
 
 use zero::Pod;
@@ -60,24 +61,24 @@ pub trait Entry {
     fn value(&self) -> u64;
     fn size(&self) -> u64;
 
-    fn get_name<'a>(&'a self, elf_file: &ElfFile<'a>) -> Result<&'a str, &'static str>;
+    fn get_name<'a>(&'a self, elf_file: &ElfFile<'a>) -> Result<&'a str, Error>;
 
     fn get_other(&self) -> Visibility {
         self.other().as_visibility()
     }
 
-    fn get_binding(&self) -> Result<Binding, &'static str> {
+    fn get_binding(&self) -> Result<Binding, Error> {
         Binding_(self.info() >> 4).as_binding()
     }
 
-    fn get_type(&self) -> Result<Type, &'static str> {
+    fn get_type(&self) -> Result<Type, Error> {
         Type_(self.info() & 0xf).as_type()
     }
 
     fn get_section_header<'a>(&'a self,
                               elf_file: &ElfFile<'a>,
                               self_index: usize)
-                              -> Result<sections::SectionHeader<'a>, &'static str> {
+                              -> Result<sections::SectionHeader<'a>, Error> {
         match self.shndx() {
             sections::SHN_XINDEX => {
                 // TODO factor out distinguished section names into sections consts
@@ -92,15 +93,15 @@ pub trait Entry {
                         assert_ne!(index, sections::SHN_UNDEF);
                         elf_file.section_header(index)
                     } else {
-                        Err("Expected SymTabShIndex")
+                        unreachable!("Expected SymTabShIndex")
                     }
                 } else {
-                    Err("no .symtab_shndx section")
+                    Err(Error::SymtabShndxNotFound)
                 }
             }
             sections::SHN_UNDEF |
             sections::SHN_ABS |
-            sections::SHN_COMMON => Err("Reserved section header index"),
+            sections::SHN_COMMON => Err(Error::ReservedSectionHeaderIndex),
             i => elf_file.section_header(i),
         }
     }
@@ -123,7 +124,7 @@ impl fmt::Display for dyn Entry {
 macro_rules! impl_entry {
     ($name: ident with ElfFile::$strfunc: ident) => {
         impl Entry for $name {
-            fn get_name<'a>(&'a self, elf_file: &ElfFile<'a>) -> Result<&'a str, &'static str> {
+            fn get_name<'a>(&'a self, elf_file: &ElfFile<'a>) -> Result<&'a str, Error> {
                 elf_file.$strfunc(self.name())
             }
 
@@ -178,14 +179,14 @@ pub enum Binding {
 }
 
 impl Binding_ {
-    pub fn as_binding(self) -> Result<Binding, &'static str> {
+    pub fn as_binding(self) -> Result<Binding, Error> {
         match self.0 {
             0 => Ok(Binding::Local),
             1 => Ok(Binding::Global),
             2 => Ok(Binding::Weak),
             b if (10..=12).contains(&b) => Ok(Binding::OsSpecific(b)),
             b if (13..=15).contains(&b) => Ok(Binding::ProcessorSpecific(b)),
-            _ => Err("Invalid value for binding"),
+            _ => Err(Error::InvalidSymbolBinding),
         }
     }
 }
@@ -208,7 +209,7 @@ pub enum Type {
 }
 
 impl Type_ {
-    pub fn as_type(self) -> Result<Type, &'static str> {
+    pub fn as_type(self) -> Result<Type, Error> {
         match self.0 {
             0 => Ok(Type::NoType),
             1 => Ok(Type::Object),
@@ -219,7 +220,7 @@ impl Type_ {
             6 => Ok(Type::Tls),
             b if (10..=12).contains(&b) => Ok(Type::OsSpecific(b)),
             b if (13..=15).contains(&b) => Ok(Type::ProcessorSpecific(b)),
-            _ => Err("Invalid value for type"),
+            _ => Err(Error::InvalidSymbolType),
         }
     }
 }

@@ -1,27 +1,29 @@
 use core::fmt;
 use core::mem;
 
+use crate::Error;
+
 use {P32, P64, ElfFile};
 use zero::{read, Pod};
 
 
-pub fn parse_header<'a>(input: &'a [u8]) -> Result<Header<'a>, &'static str> {
+pub fn parse_header<'a>(input: &'a [u8]) -> Result<Header<'a>, Error> {
     let size_pt1 = mem::size_of::<HeaderPt1>();
     if input.len() < size_pt1 {
-        return Err("File is shorter than the first ELF header part");
+        return Err(Error::FileTooShort);
     }
 
     let header_1: &'a HeaderPt1 = read(&input[..size_pt1]);
     if header_1.magic != MAGIC {
-        return Err("Did not find ELF magic number");
+        return Err(Error::InvalidMagic);
     }
 
     let header_2 = match header_1.class() {
-        Class::None | Class::Other(_) => return Err("Invalid ELF class"),
+        Class::None | Class::Other(_) => return Err(Error::InvalidClass),
         Class::ThirtyTwo => {
             let size_pt2 = mem::size_of::<HeaderPt2_<P32>>();
             if input.len() < size_pt1 + size_pt2 {
-                return Err("File is shorter than ELF headers");
+                return Err(Error::FileTooShort);
             }
             let header_2: &'a HeaderPt2_<P32> =
                 read(&input[size_pt1..size_pt1 + mem::size_of::<HeaderPt2_<P32>>()]);
@@ -30,7 +32,7 @@ pub fn parse_header<'a>(input: &'a [u8]) -> Result<Header<'a>, &'static str> {
         Class::SixtyFour => {
             let size_pt2 = mem::size_of::<HeaderPt2_<P64>>();
             if input.len() < size_pt1 + size_pt2 {
-                return Err("File is shorter than ELF headers");
+                return Err(Error::FileTooShort);
             }
             let header_2: &'a HeaderPt2_<P64> =
                 read(&input[size_pt1..size_pt1 + mem::size_of::<HeaderPt2_<P64>>()]);
@@ -80,6 +82,8 @@ pub struct HeaderPt1 {
     pub abi_version: u8,
     pub padding: [u8; 7],
 }
+
+const _CONST_CHECK_HEADER_PT1_SIZE: [(); !(mem::size_of::<HeaderPt1>() == 16) as usize] = [];
 
 unsafe impl Pod for HeaderPt1 {}
 
@@ -425,27 +429,25 @@ pub enum Machine {
 
 // TODO any more constants that need to go in here?
 
-pub fn sanity_check(file: &ElfFile) -> Result<(), &'static str> {
-    check!(mem::size_of::<HeaderPt1>() == 16);
-    check!(file.header.pt1.magic == MAGIC, "bad magic number");
+pub fn sanity_check(file: &ElfFile) -> Result<(), Error> {
+    check!(file.header.pt1.magic == MAGIC, Error::InvalidMagic);
     let pt2 = &file.header.pt2;
-    check!(mem::size_of::<HeaderPt1>() + pt2.size() == pt2.header_size() as usize,
-           "header_size does not match size of header");
+    check!(mem::size_of::<HeaderPt1>() + pt2.size() == pt2.header_size() as usize, Error::ProgramHeaderSizeMismatch);
     match (&file.header.pt1.class(), &file.header.pt2) {
-        (&Class::None, _) => return Err("No class"),
+        (&Class::None, _) => return Err(Error::InvalidClass),
         (&Class::ThirtyTwo, &HeaderPt2::Header32(_)) |
         (&Class::SixtyFour, &HeaderPt2::Header64(_)) => {}
-        _ => return Err("Mismatch between specified and actual class"),
+        _ => return Err(Error::ClassMismatch),
     }
-    check!(!file.header.pt1.version.is_none(), "no version");
-    check!(!file.header.pt1.data.is_none(), "no data format");
+    check!(!file.header.pt1.version.is_none(), Error::InvalidVersion);
+    check!(!file.header.pt1.data.is_none(), Error::InvalidDataFormat);
 
     check!(pt2.ph_offset() + (pt2.ph_entry_size() as u64) * (pt2.ph_count() as u64) <=
            file.input.len() as u64,
-           "program header table out of range");
+           Error::FileTooShort);
     check!(pt2.sh_offset() + (pt2.sh_entry_size() as u64) * (pt2.sh_count() as u64) <=
            file.input.len() as u64,
-           "section header table out of range");
+           Error::FileTooShort);
 
     // TODO check that SectionHeader_ is the same size as sh_entry_size, depending on class
 
