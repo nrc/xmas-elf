@@ -117,7 +117,7 @@ impl<'a> SectionHeader<'a> {
             }}
         }
 
-        self.get_type().map(|typ| match typ {
+        self.get_type().and_then(|typ| Ok(match typ {
             ShType::Null | ShType::NoBits => SectionData::Empty,
             ShType::ProgBits |
             ShType::ShLib |
@@ -150,20 +150,20 @@ impl<'a> SectionHeader<'a> {
             ShType::Note => {
                 let data = self.raw_data(elf_file);
                 match elf_file.header.pt1.class() {
-                    Class::ThirtyTwo => unimplemented!(),
+                    Class::ThirtyTwo => return Err("32-bit binaries not implemented"),
                     Class::SixtyFour => {
                         let header: &'a NoteHeader = read(&data[0..12]);
                         let index = &data[12..];
                         SectionData::Note64(header, index)
                     }
-                    Class::None | Class::Other(_) => unreachable!(),
+                    Class::None | Class::Other(_) => return Err("Unknown ELF class"),
                 }
             }
             ShType::Hash => {
                 let data = self.raw_data(elf_file);
                 SectionData::HashTable(read(&data[0..12]))
             }
-        })
+        }))
     }
 
     pub fn raw_data(&self, elf_file: &ElfFile<'a>) -> &'a [u8] {
