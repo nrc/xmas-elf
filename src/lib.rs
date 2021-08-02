@@ -49,7 +49,7 @@ pub struct ElfFile<'a> {
 }
 
 impl<'a> ElfFile<'a> {
-    pub fn new(input: &'a [u8]) -> Result<ElfFile<'a>, &'static str> {
+    pub fn new(input: &'a [u8]) -> Result<ElfFile<'a>, Error> {
         header::parse_header(input).map(|header| ElfFile {input, header})
     }
 
