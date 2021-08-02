@@ -58,6 +58,8 @@ pub enum Error {
     ValueNotContained,
     /// The dynamic link information does not contain a pointer, but a value.
     PointerNotContained,
+    /// 32-bit binaries are not supported.
+    Binary32BitNotSupported,
 }
 
 impl fmt::Display for Error {
@@ -91,6 +93,7 @@ impl fmt::Display for Error {
                 Self::DecompressionError => "Failed to decompress the section.",
                 Self::ValueNotContained => "The dynamic link information does not contain a value, but a pointer.",
                 Self::PointerNotContained => "The dynamic link information does not contain a pointer, but a value.",
+                Self::Binary32BitNotSupported => "The 32-bit binaries are not supported.",
             }
         )
     }

@@ -151,13 +151,13 @@ impl<'a> SectionHeader<'a> {
             ShType::Note => {
                 let data = self.raw_data(elf_file);
                 match elf_file.header.pt1.class() {
-                    Class::ThirtyTwo => return Err("32-bit binaries not implemented"),
+                    Class::ThirtyTwo => return Err(Error::Binary32BitNotSupported),
                     Class::SixtyFour => {
                         let header: &'a NoteHeader = read(&data[0..12]);
                         let index = &data[12..];
                         SectionData::Note64(header, index)
                     }
-                    Class::None | Class::Other(_) => return Err("Unknown ELF class"),
+                    Class::None | Class::Other(_) => return Err(Error::InvalidClass),
                 }
             }
             ShType::Hash => {
