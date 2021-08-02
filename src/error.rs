@@ -58,7 +58,7 @@ pub enum Error {
     ValueNotContained,
     /// The dynamic link information does not contain a pointer, but a value.
     PointerNotContained,
-    /// 32-bit binaries are not supported.
+    /// The 32-bit binaries are not supported.
     Binary32BitNotSupported,
 }
 
