@@ -5,14 +5,9 @@
 
 // TODO move to a module
 macro_rules! check {
-    ($e:expr) => {
+    ($e:expr, $err: expr) => {
         if !$e {
-            return Err("");
-        }
-    };
-    ($e:expr, $msg: expr) => {
-        if !$e {
-            return Err($msg);
+            return Err($err);
         }
     };
 }
@@ -26,6 +21,7 @@ extern crate zero;
 
 pub mod header;
 pub mod sections;
+mod error;
 pub mod program;
 pub mod symbol_table;
 pub mod dynamic;
@@ -35,6 +31,8 @@ use header::Header;
 use sections::{SectionHeader, SectionIter};
 use program::{ProgramHeader, ProgramIter};
 use zero::{read, read_str};
+
+pub use error::Error;
 
 pub type P32 = u32;
 pub type P64 = u64;
@@ -46,11 +44,11 @@ pub struct ElfFile<'a> {
 }
 
 impl<'a> ElfFile<'a> {
-    pub fn new(input: &'a [u8]) -> Result<ElfFile<'a>, &'static str> {
+    pub fn new(input: &'a [u8]) -> Result<ElfFile<'a>, Error> {
         header::parse_header(input).map(|header| ElfFile {input, header})
     }
 
-    pub fn section_header(&self, index: u16) -> Result<SectionHeader<'a>, &'static str> {
+    pub fn section_header(&self, index: u16) -> Result<SectionHeader<'a>, Error> {
         sections::parse_section_header(self.input, self.header, index)
     }
 
@@ -61,7 +59,7 @@ impl<'a> ElfFile<'a> {
         }
     }
 
-    pub fn program_header(&self, index: u16) -> Result<ProgramHeader<'a>, &'static str> {
+    pub fn program_header(&self, index: u16) -> Result<ProgramHeader<'a>, Error> {
         program::parse_program_header(self.input, self.header, index)
     }
 
@@ -72,20 +70,20 @@ impl<'a> ElfFile<'a> {
         }
     }
 
-    pub fn get_shstr(&self, index: u32) -> Result<&'a str, &'static str> {
+    pub fn get_shstr(&self, index: u32) -> Result<&'a str, Error> {
         self.get_shstr_table().map(|shstr_table| read_str(&shstr_table[(index as usize)..]))
     }
 
-    pub fn get_string(&self, index: u32) -> Result<&'a str, &'static str> {
-        let header = self.find_section_by_name(".strtab").ok_or("no .strtab section")?;
-        if header.get_type()? != sections::ShType::StrTab {
-            return Err("expected .strtab to be StrTab");
-        }
+    pub fn get_string(&self, index: u32) -> Result<&'a str, Error> {
+        let header = self.find_section_by_name(".strtab").ok_or(Error::StrtabNotFound)?;
+
+        assert_eq!(header.get_type()?, sections::ShType::StrTab, "expected .strtab to be StrTab");
+
         Ok(read_str(&header.raw_data(self)[(index as usize)..]))
     }
 
-    pub fn get_dyn_string(&self, index: u32) -> Result<&'a str, &'static str> {
-        let header = self.find_section_by_name(".dynstr").ok_or("no .dynstr section")?;
+    pub fn get_dyn_string(&self, index: u32) -> Result<&'a str, Error> {
+        let header = self.find_section_by_name(".dynstr").ok_or(Error::DynstrNotFound)?;
         Ok(read_str(&header.raw_data(self)[(index as usize)..]))
     }
 
@@ -103,7 +101,7 @@ impl<'a> ElfFile<'a> {
         None
     }
 
-    fn get_shstr_table(&self) -> Result<&'a [u8], &'static str> {
+    fn get_shstr_table(&self) -> Result<&'a [u8], Error> {
         // TODO cache this?
         let header = self.section_header(self.header.pt2.sh_str_index());
         header.map(|h| &self.input[(h.offset() as usize)..])

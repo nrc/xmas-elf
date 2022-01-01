@@ -16,11 +16,12 @@ use zero::{read, read_array, read_str, read_strs_to_null, StrReaderIterator, Pod
 use symbol_table;
 use dynamic::Dynamic;
 use hash::HashTable;
+use crate::Error;
 
 pub fn parse_section_header<'a>(input: &'a [u8],
                                 header: Header<'a>,
                                 index: u16)
-                                -> Result<SectionHeader<'a>, &'static str> {
+                                -> Result<SectionHeader<'a>, Error> {
     // Trying to get index 0 (SHN_UNDEF) is also probably an error, but it is a legitimate section.
     assert!(index < SHN_LORESERVE,
             "Attempt to get section for a reserved index");
@@ -94,18 +95,18 @@ macro_rules! getter {
 
 impl<'a> SectionHeader<'a> {
     // Note that this function is O(n) in the length of the name.
-    pub fn get_name(&self, elf_file: &ElfFile<'a>) -> Result<&'a str, &'static str> {
+    pub fn get_name(&self, elf_file: &ElfFile<'a>) -> Result<&'a str, Error> {
         self.get_type().and_then(|typ| match typ {
-            ShType::Null => Err("Attempt to get name of null section"),
+            ShType::Null => Err(Error::NullSection),
             _ => elf_file.get_shstr(self.name()),
         })
     }
 
-    pub fn get_type(&self) -> Result<ShType, &'static str> {
+    pub fn get_type(&self) -> Result<ShType, Error> {
         self.type_().as_sh_type()
     }
 
-    pub fn get_data(&self, elf_file: &ElfFile<'a>) -> Result<SectionData<'a>, &'static str> {
+    pub fn get_data(&self, elf_file: &ElfFile<'a>) -> Result<SectionData<'a>, Error> {
         macro_rules! array_data {
             ($data32: ident, $data64: ident) => {{
                 let data = self.raw_data(elf_file);
@@ -150,13 +151,13 @@ impl<'a> SectionHeader<'a> {
             ShType::Note => {
                 let data = self.raw_data(elf_file);
                 match elf_file.header.pt1.class() {
-                    Class::ThirtyTwo => return Err("32-bit binaries not implemented"),
+                    Class::ThirtyTwo => return Err(Error::Binary32BitNotSupported),
                     Class::SixtyFour => {
                         let header: &'a NoteHeader = read(&data[0..12]);
                         let index = &data[12..];
                         SectionData::Note64(header, index)
                     }
-                    Class::None | Class::Other(_) => return Err("Unknown ELF class"),
+                    Class::None | Class::Other(_) => return Err(Error::InvalidClass),
                 }
             }
             ShType::Hash => {
@@ -172,7 +173,7 @@ impl<'a> SectionHeader<'a> {
     }
 
     #[cfg(feature = "compression")]
-    pub fn decompressed_data(&self, elf_file: &ElfFile<'a>) -> Result<Cow<'a, [u8]>, &'static str> {
+    pub fn decompressed_data(&self, elf_file: &ElfFile<'a>) -> Result<Cow<'a, [u8]>, Error> {
         let raw = self.raw_data(elf_file);
         Ok(if (self.flags() & SHF_COMPRESSED) == 0 {
             Cow::Borrowed(raw)
@@ -180,14 +181,14 @@ impl<'a> SectionHeader<'a> {
             let (compression_type, size, compressed_data) = match elf_file.header.pt1.class() {
                 Class::ThirtyTwo => {
                     if raw.len() < 12 {
-                        return Err("Unexpected EOF in compressed section");
+                        return Err(Error::SectionTooShort);
                     }
                     let header: &'a CompressionHeader32 = read(&raw[..12]);
                     (header.type_.as_compression_type(), header.size as usize, &raw[12..])
                 },
                 Class::SixtyFour => {
                     if raw.len() < 24 {
-                        return Err("Unexpected EOF in compressed section");
+                        return Err(Error::SectionTooShort);
                     }
                     let header: &'a CompressionHeader64 = read(&raw[..24]);
                     (header.type_.as_compression_type(), header.size as usize, &raw[24..])
@@ -196,14 +197,14 @@ impl<'a> SectionHeader<'a> {
             };
 
             if compression_type != Ok(CompressionType::Zlib) {
-                return Err("Unknown compression type");
+                return Err(Error::InvalidCompressionType);
             }
 
             let mut decompressed = Vec::with_capacity(size);
             let mut decompress = Decompress::new(true);
             if let Err(_) = decompress.decompress_vec(
                 compressed_data, &mut decompressed, FlushDecompress::Finish) {
-                return Err("Decompression error");
+                return Err(Error::DecompressionError);
             }
             Cow::Owned(decompressed)
         })
@@ -291,7 +292,7 @@ pub enum ShType {
 }
 
 impl ShType_ {
-    fn as_sh_type(self) -> Result<ShType, &'static str> {
+    fn as_sh_type(self) -> Result<ShType, Error> {
         match self.0 {
             0 => Ok(ShType::Null),
             1 => Ok(ShType::ProgBits),
@@ -314,7 +315,7 @@ impl ShType_ {
             st if (SHT_LOOS..=SHT_HIOS).contains(&st) => Ok(ShType::OsSpecific(st)),
             st if (SHT_LOPROC..=SHT_HIPROC).contains(&st) => Ok(ShType::ProcessorSpecific(st)),
             st if (SHT_LOUSER..=SHT_HIUSER).contains(&st) => Ok(ShType::User(st)),
-            _ => Err("Invalid sh type"),
+            _ => Err(Error::InvalidSectionType),
         }
     }
 }
@@ -428,14 +429,14 @@ pub enum CompressionType {
 }
 
 impl CompressionType_ {
-    fn as_compression_type(&self) -> Result<CompressionType, &'static str> {
+    fn as_compression_type(&self) -> Result<CompressionType, Error> {
         match self.0 {
             1 => Ok(CompressionType::Zlib),
             ct if (COMPRESS_LOOS..=COMPRESS_HIOS).contains(&ct) => Ok(CompressionType::OsSpecific(ct)),
             ct if (COMPRESS_LOPROC..=COMPRESS_HIPROC).contains(&ct) => {
                 Ok(CompressionType::ProcessorSpecific(ct))
             }
-            _ => Err("Invalid compression type"),
+            _ => Err(Error::InvalidCompressionType),
         }
     }
 }
@@ -558,7 +559,7 @@ impl NoteHeader {
     }
 }
 
-pub fn sanity_check<'a>(header: SectionHeader<'a>, _file: &ElfFile<'a>) -> Result<(), &'static str> {
+pub fn sanity_check<'a>(header: SectionHeader<'a>, _file: &ElfFile<'a>) -> Result<(), Error> {
     if header.get_type()? == ShType::Null {
         return Ok(());
     }

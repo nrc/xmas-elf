@@ -3,6 +3,7 @@ use zero::{read, read_array, Pod};
 use header::{Class, Header};
 use dynamic::Dynamic;
 use sections::NoteHeader;
+use crate::Error;
 
 use core::mem;
 use core::fmt;
@@ -11,10 +12,10 @@ use core::fmt;
 pub fn parse_program_header<'a>(input: &'a [u8],
                                 header: Header<'a>,
                                 index: u16)
-                                -> Result<ProgramHeader<'a>, &'static str> {
+                                -> Result<ProgramHeader<'a>, Error> {
     let pt2 = &header.pt2;
     if !(index < pt2.ph_count() && pt2.ph_offset() > 0 && pt2.ph_entry_size() > 0) {
-        return Err("There are no program headers in this file")
+        return Err(Error::ProgramHeaderNotFound)
     }
 
     let start = pt2.ph_offset() as usize + index as usize * pt2.ph_entry_size() as usize;
@@ -100,14 +101,14 @@ macro_rules! getter {
 }
 
 impl<'a> ProgramHeader<'a> {
-    pub fn get_type(&self) -> Result<Type, &'static str> {
+    pub fn get_type(&self) -> Result<Type, Error> {
         match *self {
             ProgramHeader::Ph32(ph) => ph.get_type(),
             ProgramHeader::Ph64(ph) => ph.get_type(),
         }
     }
 
-    pub fn get_data(&self, elf_file: &ElfFile<'a>) -> Result<SegmentData<'a>, &'static str> {
+    pub fn get_data(&self, elf_file: &ElfFile<'a>) -> Result<SegmentData<'a>, Error> {
         match *self {
             ProgramHeader::Ph32(ph) => ph.get_data(elf_file),
             ProgramHeader::Ph64(ph) => ph.get_data(elf_file),
@@ -134,11 +135,11 @@ impl<'a> fmt::Display for ProgramHeader<'a> {
 macro_rules! ph_impl {
     ($ph: ident) => {
         impl $ph {
-            pub fn get_type(&self) -> Result<Type, &'static str> {
+            pub fn get_type(&self) -> Result<Type, Error> {
                 self.type_.as_type()
             }
 
-            pub fn get_data<'a>(&self, elf_file: &ElfFile<'a>) -> Result<SegmentData<'a>, &'static str> {
+            pub fn get_data<'a>(&self, elf_file: &ElfFile<'a>) -> Result<SegmentData<'a>, Error> {
                 self.get_type().map(|typ| match typ {
                     Type::Null => SegmentData::Empty,
                     Type::Load | Type::Interp | Type::ShLib | Type::Phdr | Type::Tls |
@@ -255,7 +256,7 @@ pub enum Type {
 }
 
 impl Type_ {
-    fn as_type(&self) -> Result<Type, &'static str> {
+    fn as_type(&self) -> Result<Type, Error> {
         match self.0 {
             0 => Ok(Type::Null),
             1 => Ok(Type::Load),
@@ -268,7 +269,7 @@ impl Type_ {
             TYPE_GNU_RELRO => Ok(Type::GnuRelro),
             t if (TYPE_LOOS..=TYPE_HIOS).contains(&t) => Ok(Type::OsSpecific(t)),
             t if (TYPE_LOPROC..=TYPE_HIPROC).contains(&t) => Ok(Type::ProcessorSpecific(t)),
-            _ => Err("Invalid type"),
+            _ => Err(Error::InvalidSegmentType),
         }
     }
 }
@@ -302,30 +303,24 @@ pub const FLAG_R: u32 = 0x4;
 pub const FLAG_MASKOS: u32 = 0x0ff00000;
 pub const FLAG_MASKPROC: u32 = 0xf0000000;
 
-pub fn sanity_check<'a>(ph: ProgramHeader<'a>, elf_file: &ElfFile<'a>) -> Result<(), &'static str> {
+pub fn sanity_check<'a>(ph: ProgramHeader<'a>, elf_file: &ElfFile<'a>) -> Result<(), Error> {
     let header = elf_file.header;
     match ph {
         ProgramHeader::Ph32(ph) => {
-            check!(mem::size_of_val(ph) == header.pt2.ph_entry_size() as usize,
-                   "program header size mismatch");
-            check!(((ph.offset + ph.file_size) as usize) < elf_file.input.len(),
-                   "entry point out of range");
-            check!(ph.get_type()? != Type::ShLib, "Shouldn't use ShLib");
+            check!(mem::size_of_val(ph) == header.pt2.ph_entry_size() as usize, Error::ProgramHeaderSizeMismatch);
+            check!(((ph.offset + ph.file_size) as usize) < elf_file.input.len(), Error::FileTooShort);
+            check!(ph.get_type()? != Type::ShLib, Error::UseOfShLib);
             if ph.align > 1 {
-                check!(ph.virtual_addr % ph.align == ph.offset % ph.align,
-                       "Invalid combination of virtual_addr, offset, and align");
+                check!(ph.virtual_addr % ph.align == ph.offset % ph.align, Error::MisalignedAddressAndOffset);
             }
         }
         ProgramHeader::Ph64(ph) => {
-            check!(mem::size_of_val(ph) == header.pt2.ph_entry_size() as usize,
-                   "program header size mismatch");
-            check!(((ph.offset + ph.file_size) as usize) < elf_file.input.len(),
-                   "entry point out of range");
-            check!(ph.get_type()? != Type::ShLib, "Shouldn't use ShLib");
+            check!(mem::size_of_val(ph) == header.pt2.ph_entry_size() as usize, Error::ProgramHeaderSizeMismatch);
+            check!(((ph.offset + ph.file_size) as usize) < elf_file.input.len(), Error::FileTooShort);
+            check!(ph.get_type()? != Type::ShLib, Error::UseOfShLib);
             if ph.align > 1 {
                 // println!("{} {} {}", ph.virtual_addr, ph.offset, ph.align);
-                check!(ph.virtual_addr % ph.align == ph.offset % ph.align,
-                       "Invalid combination of virtual_addr, offset, and align");
+                check!(ph.virtual_addr % ph.align == ph.offset % ph.align, Error::MisalignedAddressAndOffset);
             }
         }
     }
