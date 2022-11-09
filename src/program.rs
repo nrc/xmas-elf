@@ -170,7 +170,13 @@ macro_rules! ph_impl {
 
             pub fn raw_data<'a>(&self, elf_file: &ElfFile<'a>) -> &'a [u8] {
                 assert!(self.get_type().map(|typ| typ != Type::Null).unwrap_or(false));
-                &elf_file.input[self.offset as usize..(self.offset + self.file_size) as usize]
+                if self.file_size == 0 {
+                    // When size is 0 it's not guaranteed that offset is not
+                    // outside of elf_file.input range.
+                    &[]
+                } else {
+                    &elf_file.input[self.offset as usize..(self.offset + self.file_size) as usize]
+                }
             }
         }
 
