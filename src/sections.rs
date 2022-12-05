@@ -177,20 +177,27 @@ impl<'a> SectionHeader<'a> {
         Ok(if (self.flags() & SHF_COMPRESSED) == 0 {
             Cow::Borrowed(raw)
         } else {
+            fn read_compression_header<'a, T: Pod + Clone>(raw: &'a [u8]) -> Result<(T, &'a [u8]), &'static str> {
+                if raw.len() < mem::size_of::<T>() {
+                    return Err("Unexpected EOF in compressed section");
+                }
+
+                let (header, rest) = raw.split_at(mem::size_of::<T>());
+                let mut header_bytes = Vec::with_capacity(mem::size_of::<T>());
+                header_bytes.resize(mem::size_of::<T>(), 0);
+                assert!(header_bytes.as_ptr() as usize % mem::align_of::<T>() == 0);
+                header_bytes.copy_from_slice(header);
+                let header: &T = read(&header_bytes);
+                Ok((header.clone(), rest))
+            }
             let (compression_type, size, compressed_data) = match elf_file.header.pt1.class() {
                 Class::ThirtyTwo => {
-                    if raw.len() < 12 {
-                        return Err("Unexpected EOF in compressed section");
-                    }
-                    let header: &'a CompressionHeader32 = read(&raw[..12]);
-                    (header.type_.as_compression_type(), header.size as usize, &raw[12..])
+                    let (header, rest) = read_compression_header::<CompressionHeader32>(raw)?;
+                    (header.type_.as_compression_type(), header.size as usize, rest)
                 },
                 Class::SixtyFour => {
-                    if raw.len() < 24 {
-                        return Err("Unexpected EOF in compressed section");
-                    }
-                    let header: &'a CompressionHeader64 = read(&raw[..24]);
-                    (header.type_.as_compression_type(), header.size as usize, &raw[24..])
+                    let (header, rest) = read_compression_header::<CompressionHeader64>(raw)?;
+                    (header.type_.as_compression_type(), header.size as usize, rest)
                 },
                 Class::None | Class::Other(_) => unreachable!(),
             };
