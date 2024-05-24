@@ -12,9 +12,10 @@ categories = ["parser-implementations", "os::unix-apis"]
 [dependencies]
 zero = "0.1"
 flate2 = { version = "1", optional = true }
+zstd = { version = "0.13", optional = true }
 
 [features]
-compression = ["flate2"]
+compression = ["flate2", "zstd"]
 
 [lib]
 name = "xmas_elf"
