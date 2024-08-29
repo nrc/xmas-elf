@@ -202,17 +202,25 @@ impl<'a> SectionHeader<'a> {
                 Class::None | Class::Other(_) => unreachable!(),
             };
 
-            if compression_type != Ok(CompressionType::Zlib) {
-                return Err("Unknown compression type");
+            match compression_type {
+                Ok(CompressionType::Zlib) => {
+                    let mut decompressed = Vec::with_capacity(size);
+                    let mut decompress = Decompress::new(true);
+                    if let Err(_) = decompress.decompress_vec(
+                        compressed_data, &mut decompressed, FlushDecompress::Finish) {
+                        return Err("Decompression error");
+                    }
+                    Cow::Owned(decompressed)
+                }
+                Ok(CompressionType::Zstd) => {
+                    let mut decompressed = Vec::with_capacity(size);
+                    if let Err(_) = zstd::stream::copy_decode(compressed_data, &mut decompressed) {
+                        return Err("Decompression error");
+                    }
+                    Cow::Owned(decompressed)
+                }
+                _ => return Err("Unknown compression type"),
             }
-
-            let mut decompressed = Vec::with_capacity(size);
-            let mut decompress = Decompress::new(true);
-            if let Err(_) = decompress.decompress_vec(
-                compressed_data, &mut decompressed, FlushDecompress::Finish) {
-                return Err("Decompression error");
-            }
-            Cow::Owned(decompressed)
         })
     }
 
@@ -430,6 +438,7 @@ pub struct CompressionType_(u32);
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum CompressionType {
     Zlib,
+    Zstd,
     OsSpecific(u32),
     ProcessorSpecific(u32),
 }
@@ -438,6 +447,7 @@ impl CompressionType_ {
     fn as_compression_type(&self) -> Result<CompressionType, &'static str> {
         match self.0 {
             1 => Ok(CompressionType::Zlib),
+            2 => Ok(CompressionType::Zstd),
             ct if (COMPRESS_LOOS..=COMPRESS_HIOS).contains(&ct) => Ok(CompressionType::OsSpecific(ct)),
             ct if (COMPRESS_LOPROC..=COMPRESS_HIPROC).contains(&ct) => {
                 Ok(CompressionType::ProcessorSpecific(ct))
