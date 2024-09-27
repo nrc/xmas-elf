@@ -29,6 +29,10 @@ pub fn parse_section_header<'a>(input: &'a [u8],
                  header.pt2.sh_offset() as u64) as usize;
     let end = start + header.pt2.sh_entry_size() as usize;
 
+    if input.len() < end {
+        return Err("File is shorter than section header offset");
+    }
+
     Ok(match header.pt1.class() {
         Class::ThirtyTwo => {
             let header: &'a SectionHeader_<P32> = read(&input[start..end]);
