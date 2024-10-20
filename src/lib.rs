@@ -106,7 +106,13 @@ impl<'a> ElfFile<'a> {
     fn get_shstr_table(&self) -> Result<&'a [u8], &'static str> {
         // TODO cache this?
         let header = self.section_header(self.header.pt2.sh_str_index());
-        header.map(|h| &self.input[(h.offset() as usize)..])
+        header.and_then(|h| {
+            let offset = h.offset() as usize;
+            if self.input.len() < offset {
+                return Err("File is shorter than section offset");
+            }
+            Ok(&self.input[offset..])
+        })
     }
 }
 
