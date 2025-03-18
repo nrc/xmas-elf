@@ -165,7 +165,7 @@ impl<'a> SectionHeader<'a> {
             }
             ShType::Hash => {
                 let data = self.raw_data(elf_file);
-                SectionData::HashTable(read(&data[0..12]))
+                SectionData::HashTable(HashTable::read(data))
             }
         }))
     }
@@ -366,7 +366,7 @@ pub enum SectionData<'a> {
     Rel64(&'a [Rel<P64>]),
     Dynamic32(&'a [Dynamic<P32>]),
     Dynamic64(&'a [Dynamic<P64>]),
-    HashTable(&'a HashTable),
+    HashTable(HashTable<'a>),
 }
 
 #[derive(Debug)]
