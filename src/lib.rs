@@ -54,7 +54,7 @@ impl<'a> ElfFile<'a> {
         sections::parse_section_header(self.input, self.header, index)
     }
 
-    pub fn section_iter(&self) -> impl Iterator<Item = SectionHeader<'a>> + '_ {
+    pub fn section_iter(&self) -> impl Iterator<Item = SectionHeader<'a>> + Clone + '_ {
         SectionIter {
             file: self,
             next_index: 0,
@@ -65,7 +65,7 @@ impl<'a> ElfFile<'a> {
         program::parse_program_header(self.input, self.header, index)
     }
 
-    pub fn program_iter(&self) -> impl Iterator<Item = ProgramHeader<'a>> + '_ {
+    pub fn program_iter(&self) -> impl Iterator<Item = ProgramHeader<'a>> + Clone + '_ {
         ProgramIter {
             file: self,
             next_index: 0,
