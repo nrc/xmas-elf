@@ -569,12 +569,20 @@ impl NoteHeader {
         result
     }
 
+    /// Returns the note description data.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `offset + desc_size > input.len()`, where
+    /// `offset = (name_size + 3) & !0x3`.
     pub fn desc<'a>(&'a self, input: &'a [u8]) -> &'a [u8] {
         // Account for padding to the next u32.
+        let offset = ((self.name_size + 3) & !0x3) as usize;
+        let desc_size = self.desc_size as usize;
+        assert!(offset + desc_size <= input.len(), "Note desc data exceeds input length");
         unsafe {
-            let offset = (self.name_size + 3) & !0x3;
             let ptr = (&input[0] as *const u8).offset(offset as isize);
-            slice::from_raw_parts(ptr, self.desc_size as usize)
+            slice::from_raw_parts(ptr, desc_size)
         }
     }
 }
